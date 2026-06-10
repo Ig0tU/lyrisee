@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lyrisee — Kinetic Typography Engine</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo+Black&family=Dancing+Script:wght@700&family=Inter:wght@400;600;800;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#ECEAE4; --dim:#8C8A84; --faint:#6f6e69; --bg:#000;
+    --line:rgba(236,234,228,.16); --panel:rgba(20,20,21,.86);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:var(--bg);overflow:hidden;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:var(--ink)}
+  #stage{position:fixed;inset:0;background:#000;transition:background-color .8s ease}
+  #three-canvas{position:absolute;inset:0;display:block}
+  /* render layers stay hidden until playback begins (no bleed behind the intro) */
+  #three-canvas,#dom-layer,#embody-layer{opacity:0;transition:opacity .5s ease}
+  #stage.playing #three-canvas,#stage.playing #dom-layer,#stage.playing #embody-layer{opacity:1}
+  /* Embodiment layer: words-as-imagery + line reconstruction (DOM — works without WebGL) */
+  #embody-layer{position:absolute;inset:0;display:none;overflow:hidden}
+  .ew{position:absolute;left:50%;top:50%;font-family:'Archivo Black','Inter',sans-serif;font-weight:900;white-space:nowrap;
+      font-size:clamp(14px,2.2vw,32px);color:var(--ink,#EDEAE4);line-height:1;will-change:transform,opacity;
+      transition:transform .5s cubic-bezier(.18,.9,.2,1), opacity .35s ease, color .15s, text-shadow .15s}
+  .ew.fn{color:#7c8aa0}
+  .ew.sung{color:#fff;text-shadow:0 0 24px rgba(255,255,255,.6),0 0 6px rgba(255,255,255,.5);z-index:3}
+  /* cinematic word-art: embedded symbol + figure for scene lines (cage, peace, etc.) */
+  .esym{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) scale(.5);font-size:min(44vh,44vw);
+        color:#EDEAE4;opacity:0;z-index:0;pointer-events:none;
+        transition:opacity .6s ease, transform .8s cubic-bezier(.2,.85,.2,1)}
+  .esym.on{opacity:.9;transform:translate(-50%,-50%) scale(1)}
+  .efig{position:absolute;left:50%;top:56%;transform:translate(-50%,-50%);font-size:min(30vh,30vw);
+        opacity:.45;z-index:0;pointer-events:none;filter:grayscale(1) contrast(.8);
+        transition:transform 1s cubic-bezier(.2,.85,.2,1), opacity .8s ease}
+  .efig.free{transform:translate(-50%,-160%);opacity:0}
+  /* Director per-word art-direction: register / glow / icon (Die Alone vocabulary) */
+  .ew.script{font-family:'Dancing Script','Inter',cursive;font-weight:700;color:var(--accent,#ff9ec4);text-shadow:0 0 16px rgba(0,0,0,.0)}
+  .ew.heavy{font-family:'Archivo Black','Inter',sans-serif;font-weight:900;letter-spacing:.01em}
+  .ew.glow{text-shadow:0 0 20px rgba(255,255,255,.65),0 0 8px rgba(255,255,255,.5)}
+  .ew .ic{display:inline-block;font-size:1.5em;line-height:1;vertical-align:-0.12em;margin:0 .06em;filter:drop-shadow(0 0 10px rgba(255,255,255,.45))}
+  /* DOM lyric layer (rhyme scheme / karaoke) */
+  /* Rhyme Scheme = the emNoFavors rhyme-map: left-aligned lyric block, true rhyme families boxed in color */
+  #dom-layer{position:absolute;inset:0;display:none;flex-direction:column;justify-content:flex-start;align-items:flex-start;
+             padding:64px 6vw 6vh;overflow:hidden;background:#d7d7d4;color:#141414;pointer-events:none}
+  #dom-head{position:absolute;top:0;left:0;right:0;height:46px;background:#0c0c0c;color:#f4f1ea;display:flex;align-items:center;
+            justify-content:space-between;padding:0 22px;font-family:'Archivo Black','Inter',sans-serif;font-size:14px;letter-spacing:.05em;text-transform:uppercase;z-index:2}
+  #dom-head .lg{font-family:'Anton','Archivo Black',sans-serif;color:#fff;letter-spacing:.07em;font-size:18px}
+  #dom-lines{width:100%;max-width:1240px;will-change:transform;transition:transform .55s cubic-bezier(.2,.8,.2,1)}
+  #dom-layer .line{line-height:1.42;margin:.03em 0;opacity:.4;transition:opacity .3s ease}
+  #dom-layer .line.active{opacity:1}
+  #dom-layer .w{display:inline-block;font-family:'Inter',sans-serif;font-weight:800;font-size:clamp(15px,2.25vw,32px);
+                padding:.03em .12em;border-radius:.14em;color:#161616;white-space:pre}
+  #dom-layer .w.rg{color:#0a0a0a}
+  #dom-layer .w.sung{outline:2px solid #111;outline-offset:1px}
+  /* Intro / ingest */
+  #intro{position:absolute;inset:0;z-index:40;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:5vh 6vw;
+          background:radial-gradient(120% 120% at 50% 38%, rgba(16,16,17,.55), rgba(0,0,0,.94));transition:opacity .6s ease}
+  #intro h1{font-family:'Anton',sans-serif;font-weight:400;letter-spacing:.06em;font-size:clamp(40px,8vw,118px);margin:0;line-height:.92;color:#F4F1EA}
+  #intro .sub{color:var(--dim);font-size:clamp(12px,1.4vw,16px);letter-spacing:.34em;text-transform:uppercase;margin-top:12px}
+  #ingest{margin-top:34px;width:min(560px,90vw);display:flex;flex-direction:column;align-items:stretch;gap:14px}
+  .drop{border:1.5px dashed var(--line);border-radius:14px;padding:30px 22px;cursor:pointer;color:var(--dim);font-size:15px;transition:border-color .2s,background .2s,color .2s}
+  .drop:hover,.drop.over{border-color:#bdbab2;background:rgba(236,234,228,.04);color:var(--ink)}
+  .drop b{color:var(--ink);font-weight:800}
+  .row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+  .ghost{font-family:'Inter';font-weight:600;font-size:13px;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:10px 14px;cursor:pointer;transition:border-color .15s}
+  .ghost:hover{border-color:#7a786f}
+  .ghost:disabled{opacity:.45;cursor:not-allowed}
+  #ingestStatus{min-height:1.3em;font-size:12.5px;color:var(--dim);line-height:1.5}
+  #playBtn{align-self:center;margin-top:2px;font-family:'Inter';font-weight:800;font-size:16px;letter-spacing:.03em;padding:14px 46px;border-radius:999px;border:0;cursor:pointer;
+           color:#0b0b0c;background:#F2EFE8;box-shadow:0 8px 30px rgba(0,0,0,.5);transition:transform .15s, box-shadow .15s, background .15s, opacity .2s}
+  #playBtn:hover:not(:disabled){transform:translateY(-2px);background:#fff;box-shadow:0 14px 40px rgba(0,0,0,.6)}
+  #playBtn:disabled{opacity:.4;cursor:not-allowed}
+  .demo{font-size:12.5px;color:var(--faint)}
+  .demo a{color:var(--dim);text-decoration:underline;cursor:pointer}
+  .demo a:hover{color:var(--ink)}
+  #introNote{margin-top:24px;font-size:11.5px;color:var(--faint);max-width:520px;line-height:1.6}
+  /* Top bar */
+  #topbar{position:absolute;top:0;left:0;right:0;z-index:30;display:flex;align-items:center;gap:14px;padding:14px 18px;
+          background:linear-gradient(180deg,rgba(0,0,0,.55),rgba(0,0,0,0));opacity:0;transition:opacity .3s;pointer-events:none}
+  #stage.playing #topbar{opacity:1;pointer-events:auto}
+  .brand{font-family:'Anton';font-size:20px;letter-spacing:.05em;color:#F4F1EA}
+  .brand small{font-family:'Inter';font-weight:600;font-size:11px;letter-spacing:.22em;color:var(--dim);margin-left:8px;text-transform:uppercase}
+  .track{font-size:12px;color:var(--dim);max-width:230px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .spacer{flex:1}
+  select{font-family:'Inter';font-weight:600;font-size:13px;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:9px 12px;cursor:pointer;outline:none}
+  select:hover{border-color:#7a786f}
+  .field{display:flex;flex-direction:column;gap:3px}
+  .field label{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--dim);padding-left:2px}
+  #constructDesc{max-width:340px;font-size:11.5px;color:var(--dim);line-height:1.45}
+  /* Transport */
+  #transport{position:absolute;left:0;right:0;bottom:0;z-index:30;display:flex;align-items:center;gap:14px;padding:16px 20px 18px;
+             background:linear-gradient(0deg,rgba(0,0,0,.6),rgba(0,0,0,0));opacity:0;transition:opacity .3s;pointer-events:none}
+  #stage.playing #transport{opacity:1;pointer-events:auto}
+  #ppBtn{width:44px;height:44px;border-radius:50%;border:0;background:#F2EFE8;color:#111;font-size:18px;cursor:pointer;flex:0 0 auto;display:flex;align-items:center;justify-content:center}
+  #ppBtn:hover{background:#fff}
+  #scrub{flex:1;-webkit-appearance:none;appearance:none;height:6px;border-radius:3px;background:#2a2a2b;cursor:pointer}
+  #scrub::-webkit-slider-thumb{-webkit-appearance:none;width:15px;height:15px;border-radius:50%;background:#fff;box-shadow:0 0 0 4px rgba(236,234,228,.18)}
+  #scrub::-moz-range-thumb{width:15px;height:15px;border:0;border-radius:50%;background:#fff}
+  #time{font-variant-numeric:tabular-nums;font-size:12.5px;color:var(--dim);min-width:96px;text-align:center}
+  .mini{font-size:12px;color:var(--dim);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px 10px;cursor:pointer}
+  .mini:hover{border-color:#7a786f;color:var(--ink)}
+  #hint{position:absolute;bottom:84px;left:50%;transform:translateX(-50%);z-index:25;font-size:11px;letter-spacing:.1em;color:var(--faint);opacity:0;transition:opacity .4s}
+  #stage.playing #hint{opacity:.8}
+  /* Lyric editor (human-in-the-loop transcript correction) */
+  #editor{position:absolute;inset:0;z-index:50;display:none;flex-direction:column;background:rgba(8,8,9,.97);backdrop-filter:blur(3px);padding:3.4vh 4vw}
+  #editor.open{display:flex}
+  .ed-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+  .ed-head span{font-family:'Anton';font-size:24px;letter-spacing:.04em;color:#F4F1EA}
+  .ed-hint{color:var(--dim);font-size:12.5px;margin-bottom:14px;max-width:780px;line-height:1.55}
+  #edList{flex:1;overflow:auto;display:flex;flex-direction:column;gap:7px;padding-right:6px}
+  .ed-row{display:flex;gap:8px;align-items:center}
+  .ed-t{width:78px;flex:0 0 auto;font-variant-numeric:tabular-nums;background:#161617;border:1px solid var(--line);color:var(--dim);border-radius:7px;padding:8px;font-size:12px}
+  .ed-x{flex:1;background:#161617;border:1px solid var(--line);color:var(--ink);border-radius:7px;padding:9px 11px;font-size:14px;font-family:'Inter'}
+  .ed-x:focus,.ed-t:focus{outline:none;border-color:#7a786f}
+  .ed-del{flex:0 0 auto;width:30px;height:30px;border-radius:7px;border:1px solid var(--line);background:transparent;color:var(--dim);cursor:pointer;font-size:16px;line-height:1}
+  .ed-del:hover{color:#fff;border-color:#7a786f}
+  .ed-foot{display:flex;align-items:center;gap:10px;margin-top:14px;flex-wrap:wrap}
+  .ghost-solid{font-family:'Inter';font-weight:800;font-size:14px;color:#0b0b0c;background:#F2EFE8;border:0;border-radius:9px;padding:11px 22px;cursor:pointer}
+  .ghost-solid:hover{background:#fff}
+</style>
+</head>
+<body>
+<div id="stage">
+  <canvas id="three-canvas"></canvas>
+  <div id="dom-layer"></div>
+  <div id="embody-layer"></div>
+
+  <div id="topbar">
+    <div class="brand">LYRISEE<small>Kinetic Typography</small></div>
+    <div class="track" id="trackName"></div>
+    <div class="spacer"></div>
+    <button id="editBtn" class="mini" title="Edit lyrics / fix transcription">✎ Edit lyrics</button>
+    <div class="field">
+      <label for="constructSel">Construct</label>
+      <select id="constructSel"></select>
+    </div>
+    <div id="constructDesc"></div>
+  </div>
+
+  <div id="editor">
+    <div class="ed-head"><span>Edit Lyrics</span><button id="edClose" class="mini">Close</button></div>
+    <div class="ed-hint">Fix any mis-transcribed words — each row is one line. Edit the text, nudge a line's start time (seconds) if needed, or add / delete lines. <b>Apply &amp; re-render</b> updates the visual live; <b>Download</b> saves a corrected lyric_data.json (rhymes, POS &amp; word-forms are re-derived from your edits).</div>
+    <div id="edList"></div>
+    <div class="ed-foot">
+      <button id="edAdd" class="mini">+ Add line</button>
+      <span class="spacer"></span>
+      <button id="edDownload" class="mini">⤓ Download corrected .json</button>
+      <button id="edApply" class="ghost-solid">Apply &amp; re-render</button>
+    </div>
+  </div>
+
+  <div id="hint">SPACE play/pause · ← → seek · F fullscreen</div>
+
+  <div id="transport">
+    <button id="ppBtn" title="Play/Pause (Space)">▶</button>
+    <input id="scrub" type="range" min="0" max="1000" value="0" step="1">
+    <div id="time">0:00 / 0:00</div>
+    <button id="audioBtn" class="mini" title="Load / change audio">♪ Audio</button>
+    <input id="audioInput2" type="file" accept="audio/*" style="display:none">
+    <button id="fsBtn" class="mini" title="Fullscreen (F)">⛶</button>
+  </div>
+
+  <div id="intro">
+    <h1>LYRISEE</h1>
+    <div class="sub">Kinetic Typography · Any Song</div>
+    <div id="ingest">
+      <div class="drop" id="drop">Drop an <b>audio file</b> here, or click to choose
+        <input id="audioInput" type="file" accept="audio/*" hidden>
+      </div>
+      <div class="row">
+        <button class="ghost" id="jsonBtn">+ Add lyric data (.json)</button>
+        <button class="ghost" id="xscribeBtn">Auto-transcribe in browser</button>
+        <input id="jsonInput" type="file" accept=".json,application/json" hidden>
+      </div>
+      <div id="ingestStatus"></div>
+      <button id="playBtn" disabled>▶ Play</button>
+      <div class="demo">No track handy? <a id="demoLink">Load the demo</a></div>
+    </div>
+    <div id="introNote">Feed it any song. Drop the audio, then add the <b>lyric_data.json</b> your pipeline produces
+      (words with start / end / pos, optional beats) — or auto-transcribe in the browser. The engine reads the lyrics' intent and arranges them as kinetic visual aid.</div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/FontLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/geometries/TextGeometry.js"></script>
+<script>
+/* ============================================================================
+   LYRISEE — Kinetic Typography Engine (song-agnostic)
+   Ingest ANY audio + lyric_data.json (or in-browser transcription) ->
+   layered intent understanding -> artistic kinetic arrangement -> render.
+   Two render layers: WebGL (kinetic + semantic word-forms) and DOM (rhyme karaoke).
+   ========================================================================== */
+/* Sandboxed-iframe guard: some browser extensions (crypto wallets, etc.) inject scripts that read
+   localStorage and throw "SecurityError ... lacks the 'allow-same-origin' flag" inside our sandbox.
+   That is the extension's failure, not ours (this engine never uses localStorage). Swallow ONLY those
+   specific benign errors so they don't surface as "Uncaught" or interrupt anything. */
+(function(){try{
+  var BENIGN=/localStorage|sessionStorage|allow-same-origin|sandboxed/i;
+  window.addEventListener('error',function(e){var m=(e&&e.message)||'';if(BENIGN.test(m)){e.preventDefault();if(e.stopImmediatePropagation)e.stopImmediatePropagation();return true;}},true);
+  window.addEventListener('unhandledrejection',function(e){var r=e&&e.reason;var m=(r&&(r.message||r))||'';if(BENIGN.test(String(m)))e.preventDefault();});
+}catch(_){ }})();
+const DEMO_DATA = /*__LYRIC_DATA__*/ {"words":[],"beats":[]} /*__END__*/;  // bundled sample only (optional)
+
+(function(){
+'use strict';
+/* song data is loaded at runtime — NOT bound to any single track */
+let WORDS=[], BEATS=[], LINES=[], WORD2LINE=new Int32Array(0), DURATION=8, TRACK_NAME='';
+let ARRANGEMENT=[], autoArrange=false;            // intent-driven construct switching
+let METAS=[];                                     // per-line word-art cues from the AI art-direction stage
+let SCENES=[];                                    // per-line cinematic cues (rotate word / symbol / cage+figure)
+let RHYME_PAL=[];                                  // rhyme-family palette (from rhyme_engine.py / fallback)
+let CONCEPT=null;                                  // per-song visual world (palette/fonts/motifs) from the Director CONCEPT stage
+const AUTOLOAD_NAME=/*__AUTOLOAD_NAME__*/ "" /*__END_AL__*/;  // set per-build to auto-load an inlined track
+const AUTOLOAD_AUDIO=/*__AUTOLOAD_AUDIO__*/ "" /*__END_AUD__*/; // optional per-build audio (relative URL or data: URI)
+const AUTOLOAD_SEEK=/*__AUTOLOAD_SEEK__*/ 0 /*__END_SEEK__*/;   // where autoplay starts (seconds)
+
+/* ---------- URL params (deep-link / verification) ---------- */
+const Q=new URLSearchParams(location.search);
+const Q_CONSTRUCT=Q.get('construct'); const Q_T=parseFloat(Q.get('t'));
+const Q_AUTOPLAY=Q.get('play')==='1'||Q.get('autoplay')==='1'; const Q_DEMO=Q.get('demo')==='1';
+
+/* ---------- DOM refs ---------- */
+const stage=document.getElementById('stage'), canvas=document.getElementById('three-canvas'),
+  domLayer=document.getElementById('dom-layer'), embodyLayer=document.getElementById('embody-layer'), intro=document.getElementById('intro'),
+  playBtn=document.getElementById('playBtn'), ppBtn=document.getElementById('ppBtn'),
+  scrub=document.getElementById('scrub'), timeEl=document.getElementById('time'),
+  constructSel=document.getElementById('constructSel'), constructDesc=document.getElementById('constructDesc'),
+  fsBtn=document.getElementById('fsBtn'), trackNameEl=document.getElementById('trackName'),
+  dropZone=document.getElementById('drop'), audioInput=document.getElementById('audioInput'),
+  audioInput2=document.getElementById('audioInput2'), audioBtn=document.getElementById('audioBtn'),
+  jsonInput=document.getElementById('jsonInput'), jsonBtn=document.getElementById('jsonBtn'),
+  xscribeBtn=document.getElementById('xscribeBtn'), demoLink=document.getElementById('demoLink'),
+  ingestStatus=document.getElementById('ingestStatus'),
+  editor=document.getElementById('editor'), edList=document.getElementById('edList'),
+  editBtn=document.getElementById('editBtn'), edClose=document.getElementById('edClose'),
+  edApply=document.getElementById('edApply'), edDownload=document.getElementById('edDownload'),
+  edAdd=document.getElementById('edAdd');
+
+/* ============================================================================
+   PART 1 — LINGUISTIC INTELLIGENCE  (general; works on any lyrics)
+   ========================================================================== */
+const FUNCTION_POS=new Set(['DET','ADP','PRON','AUX','CCONJ','SCONJ','PART','PUNCT']);
+function clean(t){return (t||'').toLowerCase().replace(/[^a-z']/g,'');}
+function posWeight(pos){switch(pos){case 'PROPN':return 1.18;case 'NOUN':return 1.0;case 'VERB':return .92;
+  case 'ADJ':return .82;case 'NUM':case 'INTJ':return .74;case 'ADV':return .66;default:return FUNCTION_POS.has(pos)?.40:.6;}}
+
+/* Rhyme analysis: spelling -> coarse phoneme, vowel-sound (assonance) grouping.
+   Tuned for rap multisyllabic rhyme; handles silent-e, vowel digraphs, silent "gh". */
+function syllableCount(w){const m=(w||'').replace(/e$/,'').match(/[aeiouy]+/g);return m?m.length:1;}
+function phon(word){
+  let w=clean(word).replace(/'/g,''); if(!w) return '';
+  w=w.replace(/igh/g,'I').replace(/eigh/g,'A').replace(/ough|augh/g,'O')
+     .replace(/ck/g,'k').replace(/ph/g,'f').replace(/qu/g,'kw')
+     .replace(/^kn/,'n').replace(/^wr/,'r').replace(/wh/g,'w').replace(/dge/g,'j').replace(/tch/g,'ch');
+  w=w.replace(/a[iy]/g,'A').replace(/ey/g,'A').replace(/e[ie]/g,'E').replace(/ea/g,'E').replace(/ee/g,'E')
+     .replace(/oa/g,'O').replace(/oe/g,'O').replace(/ow/g,'O').replace(/oo/g,'U').replace(/ew/g,'U').replace(/ue/g,'U')
+     .replace(/ou/g,'W').replace(/o[iy]/g,'Y');
+  if(/y$/.test(w)){ const other=/[aeiouAEIOUWY]/.test(w.slice(0,-1)); w=w.slice(0,-1)+(other?'E':'I'); }
+  if(/[^aeiouAEIOUWY](le|re)$/.test(w)){ /* syllabic l/r */ }
+  else if(/[aeiou][^aeiouAEIOUWY]e$/.test(w)){
+     w=w.replace(/([aeiou])([^aeiouAEIOUWY])e$/,(m,v,c)=>({a:'A',e:'E',i:'I',o:'O',u:'U'}[v]||v)+c);
+  } else if(/[^aeiouAEIOUWY]e$/.test(w) && w.length>2){ w=w.slice(0,-1); }
+  return w;
+}
+function rhymeKey(text){
+  const w=phon(text); if(!w) return null;
+  const m=w.match(/([AEIOUWYaeiou])[^AEIOUWYaeiou]*$/);
+  if(!m) return null;
+  const nuc=m[1];
+  return {A:'AY',E:'EE',I:'LONG_I',O:'OH',U:'OO',W:'OW',Y:'OY',a:'AH',e:'EH',i:'IH',o:'AW',u:'UH'}[nuc]||('V_'+nuc.toUpperCase());
+}
+
+/* Light POS guesser for transcribed lyrics that arrive without tags */
+const FN_WORDS=new Set(('a an the of to in on at for and or but nor so yet as if then than that this these those i you he she it we they me him her us them my your his its our their is am are was were be been being do does did have has had will would can could should may might must not no yes up down out off over under into onto from with by about').split(' '));
+function quickPOS(text){const w=clean(text).replace(/'.*$/,''); if(!w)return 'X'; if(FN_WORDS.has(w))return 'DET'; if(/(ing|ed)$/.test(w))return 'VERB'; if(/(ly)$/.test(w))return 'ADV'; return 'NOUN';}
+
+/* Line segmentation from timing gaps + sentence punctuation */
+function buildLines(words){
+  const lines=[]; let cur=[]; const GAP=0.62, MAXW=9;
+  for(let i=0;i<words.length;i++){
+    cur.push(i); const next=words[i+1];
+    const gap=next?(next.start-words[i].end):999;
+    const endsSentence=/[.!?…]$/.test(words[i].text);
+    if(!next||gap>GAP||cur.length>=MAXW||(endsSentence&&cur.length>=3)){
+      lines.push({idx:cur.slice(),start:words[cur[0]].start,end:words[cur[cur.length-1]].end}); cur=[];
+    }
+  }
+  return lines;
+}
+
+/* Per-window rhyme color families (assonance) — warm/cool hues only, deliberately no lavender tones */
+const RHYME_PALETTE=["#FF5D5D","#FF8A3D","#FFB73D","#F1E14C","#A3D955","#46C68A","#2FB8C6","#48A6FF","#FF7F5C","#D8D3C7"];
+function computeWindowRhymes(centerLine, windowLines){
+  const lo=Math.max(0,centerLine-Math.floor(windowLines/2));
+  const hi=Math.min(LINES.length-1, lo+windowLines-1);
+  const keyToWords={};
+  for(let li=lo;li<=hi;li++){ for(const wi of LINES[li].idx){
+    const w=WORDS[wi]; if(FUNCTION_POS.has(w.pos)) continue;
+    const k=rhymeKey(w.text); if(!k) continue;
+    (keyToWords[k]=keyToWords[k]||[]).push(wi);
+  }}
+  const wordColor={}; let ci=0;
+  Object.keys(keyToWords).filter(k=>keyToWords[k].length>=2)
+    .sort((a,b)=>Math.min(...keyToWords[a])-Math.min(...keyToWords[b]))
+    .forEach(k=>{const c=RHYME_PALETTE[ci++%RHYME_PALETTE.length];keyToWords[k].forEach(wi=>wordColor[wi]=c);});
+  return {lo,hi,wordColor};
+}
+
+/* Fallback rhyme grouping when the pipeline (rhyme_engine.py / CMUdict) didn't supply groups:
+   group every content word by its phonetic assonance key across the whole song (internal rhymes too). */
+function ensureRhymeGroups(){
+  if(WORDS.some(w=>w.rhyme>=0) && RHYME_PAL.length) return;
+  const FAM=["#19E0E0","#A6E22E","#FF3D7F","#FF1E1E","#9D6B4A","#9AA0A6","#FF9F1C","#2D9CFF","#FF66C4","#B388FF","#7CFF6B","#E6C229","#FF5C2A","#5CE1E6"];
+  const byKey={};
+  WORDS.forEach((w,i)=>{ w.rhyme=-1; if(FUNCTION_POS.has(w.pos))return; const k=rhymeKey(w.text); if(!k)return; (byKey[k]=byKey[k]||[]).push(i); });
+  const fams=Object.keys(byKey).filter(k=>byKey[k].length>=2).sort((a,b)=>Math.min(...byKey[a])-Math.min(...byKey[b]));
+  RHYME_PAL=[]; fams.forEach((k,fi)=>{ byKey[k].forEach(i=>WORDS[i].rhyme=fi); RHYME_PAL.push(FAM[fi%FAM.length]); });
+}
+
+/* Semantic-Visual Action Library: lyric intention -> motion archetype */
+const FORM_MAP=[
+  {re:/^(cage|caged|trap|trapped|prison|locked|bars?)$/,form:'cage'},
+  {re:/^(free|freedom|fly|flew|escape|wings?|release|loose)$/,form:'liberate'},
+  {re:/^(rise|rising|rose|up|elevate|elevating|escalate|higher|height|heights|above|climb)$/,form:'ascend'},
+  {re:/^(fall|falling|fell|down|drop|dropped|bottom|sink|sank|crash)$/,form:'fall'},
+  {re:/^(rock|stone|wall|hard|stand|stood|stuck|frozen)$/,form:'settle'},
+  {re:/^(light|lights|fire|burn|burns|flame|spark|glow|shine|bright|blaze|choke|smoke)$/,form:'ignite'},
+  {re:/^(water|stream|streams|flow|flows|flowing|wave|waves|river|ocean|rain|drip)$/,form:'water'},
+  {re:/^(peace|calm|still|quiet|breathe|rest|sober|mind|soul)$/,form:'breathe'},
+  {re:/^(spit|spits|bars?|mic|write|wrote|flow|rhyme|rhymes|words?|page|notepad|bar)$/,form:'staccato'},
+  {re:/^(time|forever|end|eternal|always|life)$/,form:'drift'}
+];
+function semanticForm(word){const w=clean(word.text);for(const f of FORM_MAP){if(f.re.test(w))return f.form;}return word.pos==='VERB'?'verbmotion':null;}
+
+/* ============================================================================
+   PART 2 — DATA LOADING (song-agnostic)
+   ========================================================================== */
+function loadData(data, name){
+  WORDS=(data&&data.words||[]).filter(w=>w&&w.text&&/\S/.test(w.text)).map(w=>({text:String(w.text),start:+w.start||0,end:+w.end|| (+w.start||0)+0.3, pos:w.pos||'X', rhyme:(w.rhyme==null?-1:w.rhyme), dir:(w.dir||null)}));
+  RHYME_PAL=(data&&data.rhyme_palette||[]).slice();
+  CONCEPT=(data&&data.concept)||null; applyConcept();
+  BEATS=(data&&data.beats||[]).map(Number).filter(n=>!isNaN(n));
+  DURATION=WORDS.length?Math.max(WORDS[WORDS.length-1].end+2.5,4):8;
+  LINES=buildLines(WORDS);
+  WORD2LINE=new Int32Array(WORDS.length);
+  LINES.forEach((ln,li)=>ln.idx.forEach(wi=>WORD2LINE[wi]=li));
+  ensureRhymeGroups();
+  TRACK_NAME=name||''; if(trackNameEl) trackNameEl.textContent=TRACK_NAME;
+  ARRANGEMENT=(data&&data.arrangement||[]).slice().sort((a,b)=>(a.start||0)-(b.start||0)); autoArrange=ARRANGEMENT.length>0;
+  METAS=(data&&data.metaphors||[]).slice().sort((a,b)=>(a.start||0)-(b.start||0));
+  SCENES=(data&&data.scenes||[]).slice().sort((a,b)=>(a.start||0)-(b.start||0));
+  if(!GL.ok){ var _g={kinetic_art:1,chameleon:1,classic:1}; ARRANGEMENT=ARRANGEMENT.map(function(a){return _g[a.construct]?Object.assign({},a,{construct:'embodiment'}):a;}); }
+  if(GL.ok){ GL.active.forEach(w=>w.dispose()); GL.active.clear(); }
+  DOM.built=false; domLayer.innerHTML=''; DOM.shownLo=-1; DOM.shownHi=-1;
+  embClear();
+  if(cur&&cur.layer==='dom') buildDOMOnce();
+  Clock.seek(0); lastNow=0; GL.lastBeat=-1;
+  return WORDS.length;
+}
+
+/* ============================================================================
+   PART 3 — MASTER CLOCK & TRANSPORT (audio-optional)
+   ========================================================================== */
+const Clock={
+  audio:null, playing:false, virtT:0, lastPerf:0,
+  get time(){ return this.audio ? this.audio.currentTime : this.virtT; },
+  get duration(){ return (this.audio && this.audio.duration && isFinite(this.audio.duration)) ? this.audio.duration : DURATION; },
+  play(){ if(this.playing||!WORDS.length) return; this.playing=true; this.lastPerf=performance.now(); if(this.audio){this.audio.play().catch(()=>{});} ppBtn.textContent='❚❚'; },
+  pause(){ this.playing=false; if(this.audio) this.audio.pause(); ppBtn.textContent='▶'; },
+  toggle(){ this.playing?this.pause():this.play(); },
+  seek(t){ t=Math.max(0,Math.min(this.duration,t)); if(this.audio) this.audio.currentTime=t; else this.virtT=t; },
+  tick(){ if(this.playing && !this.audio){ const now=performance.now(); this.virtT+=(now-this.lastPerf)/1000; this.lastPerf=now; if(this.virtT>=this.duration){this.virtT=this.duration;this.pause();} } }
+};
+function fmt(s){s=Math.max(0,s|0);return (s/60|0)+':'+String(s%60).padStart(2,'0');}
+
+/* ============================================================================
+   PART 4 — WEBGL LAYER  (kinetic + semantic word-forms)
+   ========================================================================== */
+const GL={ ok:false, scene:null, camera:null, renderer:null, font:null, group:null, active:new Map(), beatPulse:0, lastBeat:-1, usedSlots:new Set() };
+/* anti-overlap: concurrent words get distinct vertical slots (0 = centered, others stack symmetrically) */
+function gpAcquireSlot(){ for(var i=0;i<16;i++){ if(!GL.usedSlots.has(i)){ GL.usedSlots.add(i); return i; } } return 0; }
+function gpReleaseSlot(s){ GL.usedSlots.delete(s); }
+function slotY(slot,gap){ if(!slot) return 0; var k=Math.ceil(slot/2); return (slot%2?1:-1)*k*gap; }
+function initGL(font){
+  GL.font=font;
+  try{ GL.renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:false}); }catch(e){ return false; }
+  GL.renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+  GL.renderer.setSize(window.innerWidth,window.innerHeight);
+  GL.scene=new THREE.Scene(); GL.scene.fog=new THREE.Fog(0x161616,120,520);
+  GL.camera=new THREE.PerspectiveCamera(60,window.innerWidth/window.innerHeight,0.1,2000); GL.camera.position.set(0,0,260);
+  GL.scene.add(new THREE.AmbientLight(0xffffff,0.55));
+  const key=new THREE.PointLight(0xffe9e0,1.7,1400); key.position.set(0,120,260); GL.scene.add(key);
+  const rim=new THREE.PointLight(0xcfd6ff,0.9,1400); rim.position.set(-220,-60,160); GL.scene.add(rim);
+  GL.group=new THREE.Group(); GL.scene.add(GL.group); GL.ok=true; return true;
+}
+function easeOutBack(x){const c1=1.70158,c3=c1+1;return 1+c3*Math.pow(x-1,3)+c1*Math.pow(x-1,2);}
+function easeOutBounce(x){const n1=7.5625,d1=2.75;if(x<1/d1)return n1*x*x;if(x<2/d1)return n1*(x-=1.5/d1)*x+.75;if(x<2.5/d1)return n1*(x-=2.25/d1)*x+.9375;return n1*(x-=2.625/d1)*x+.984375;}
+class GLWord{
+  constructor(wi,theme){
+    this.wi=wi; this.data=WORDS[wi]; this.theme=theme; this.group=new THREE.Group(); this.letters=[]; this.basePos=[];
+    const text=this.data.text.replace(/[^\S]/g,''); const display=theme.upper?text.toUpperCase():text;
+    const size=theme.baseSize*posWeight(this.data.pos); this.size=size; let x=0;
+    for(const ch of display){
+      if(ch===' '){x+=size*0.4;continue;}
+      let geo; try{ geo=new THREE.TextGeometry(ch,{font:GL.font,size:size,height:Math.max(2,size*0.16),curveSegments:6,bevelEnabled:true,bevelThickness:size*0.03,bevelSize:size*0.02,bevelSegments:2}); }catch(e){ continue; }
+      geo.computeBoundingBox(); const w=(geo.boundingBox.max.x-geo.boundingBox.min.x)||size*0.5; const col=this.colorFor();
+      const mat=new THREE.MeshStandardMaterial({color:col,emissive:col,emissiveIntensity:0,roughness:theme.roughness,metalness:theme.metalness,transparent:true,opacity:0});
+      const mesh=new THREE.Mesh(geo,mat); mesh.position.x=x; this.group.add(mesh); this.letters.push(mesh); x+=w+size*0.12;
+    }
+    const box=new THREE.Box3().setFromObject(this.group); const c=new THREE.Vector3(); box.getCenter(c);
+    this.letters.forEach(l=>{l.position.x-=c.x;l.position.y-=c.y;}); this.letters.forEach(l=>this.basePos.push(l.position.clone()));
+    this.form=semanticForm(this.data); this.seed=Math.random()*10; this.slot=gpAcquireSlot(); GL.group.add(this.group);
+  }
+  colorFor(){const t=this.theme,p=this.data.pos;
+    if(t.palette){ if(p==='NOUN'||p==='PROPN')return new THREE.Color(t.palette.noun); if(p==='VERB')return new THREE.Color(t.palette.verb); if(p==='ADJ')return new THREE.Color(t.palette.adj); if(FUNCTION_POS.has(p))return new THREE.Color(t.palette.fn); return new THREE.Color(t.palette.base);} return new THREE.Color(t.color||0xffffff);}
+  update(now,dt){
+    const d=this.data,lead=0.45,tail=0.55; const phase=(now-d.start)/Math.max(0.08,(d.end-d.start)); let vis,scale,emis;
+    if(now<d.start){ const g=Math.max(0,1-(d.start-now)/lead); vis=0.16*g; scale=0.82+0.06*g; emis=0; }
+    else if(now<=d.end){ const snap=Math.min(1,(now-d.start)/0.12); vis=1; scale=0.82+0.34*easeOutBack(snap); emis=0.55*snap+0.25*GL.beatPulse; }
+    else { const e=(now-d.end)/tail; vis=Math.max(0,1-e); scale=1.16-0.12*e; emis=0.2*(1-e); }
+    this.group.scale.setScalar(scale*(this.theme.scaleMul||1));
+    const t=now*1.0;
+    var gap=(this.theme.baseSize||22)*2.1; this.group.position.y=this.theme.posY+slotY(this.slot,gap)+Math.sin(t*0.8+this.seed)*3+GL.beatPulse*6;
+    this.group.position.x=(this.theme.jitter?Math.sin(t*0.5+this.seed)*8:0);
+    this.group.position.z=GL.beatPulse*14;
+    if(this.theme.rotate) this.group.rotation.y+=dt*0.25;
+    for(const l of this.letters){l.material.opacity=vis;l.material.emissiveIntensity=emis;}
+    if(this.form&&now>=d.start-0.1) this.applyForm(this.form,Math.min(1,Math.max(0,phase)),now); else this.applyDefault(now);
+  }
+  applyDefault(now){this.letters.forEach((l,i)=>{const b=this.basePos[i];l.position.y=b.y+Math.sin(now*4+i*0.6)*this.size*0.05;l.rotation.z=0;});}
+  applyForm(form,p,now){
+    const S=this.size,L=this.letters,n=L.length,lerp=THREE.MathUtils.lerp;
+    switch(form){
+      case 'cage':{const R=S*1.9;L.forEach((l,i)=>{const b=this.basePos[i];const ang=(i/n)*Math.PI*2;l.position.x=lerp(b.x,Math.cos(ang)*R,p);l.position.y=lerp(b.y,Math.sin(ang)*R*0.7,p);l.rotation.z=lerp(0,(i%2?1:-1)*Math.PI/2,p);});break;}
+      case 'liberate': case 'ascend':{L.forEach((l,i)=>{const b=this.basePos[i];l.position.y=b.y+p*S*(1+(i-n/2)*0.05)+Math.sin(now*3+i)*S*0.06*p;l.position.x=b.x+(i-n/2)*p*S*0.18;l.rotation.z=lerp(0,(i-n/2)*0.12,p);});break;}
+      case 'fall': case 'settle':{L.forEach((l,i)=>{const b=this.basePos[i];const delay=i*0.05;const pp=Math.max(0,Math.min(1,(p-delay)/(1-delay||1)));l.position.y=b.y-S*1.4*(1-easeOutBounce(pp));});break;}
+      case 'ignite':{L.forEach((l,i)=>{const b=this.basePos[i];const f=0.6+0.4*Math.sin(now*22+i*1.7);l.material.emissiveIntensity=Math.max(l.material.emissiveIntensity,0.5+0.6*f);l.position.y=b.y+Math.abs(Math.sin(now*6+i))*S*0.08;});break;}
+      case 'water':{L.forEach((l,i)=>{const b=this.basePos[i];l.position.y=b.y+Math.sin(now*4+i*0.9)*S*0.22;l.rotation.z=Math.sin(now*3+i*0.7)*0.12;});break;}
+      case 'breathe':{this.group.scale.multiplyScalar(1+Math.sin(now*1.6)*0.06);break;}
+      case 'staccato':{L.forEach((l,i)=>{const b=this.basePos[i];const k=Math.max(0,1-Math.abs((p*n)-i));l.position.z=k*S*0.8;l.position.y=b.y;});break;}
+      case 'verbmotion':{L.forEach((l,i)=>{const b=this.basePos[i];l.position.x=b.x+Math.sin(now*5+i*0.4)*S*0.1;});break;}
+      default:this.applyDefault(now);
+    }
+  }
+  dispose(){gpReleaseSlot(this.slot);GL.group.remove(this.group);this.letters.forEach(l=>{l.geometry.dispose();l.material.dispose();});}
+}
+const GL_THEMES={
+  kinetic_art:{bg:'#2E0709',fog:0x220607,baseSize:26,posY:0,upper:true,rotate:false,jitter:false,roughness:0.35,metalness:0.2,scaleMul:1.0,
+    palette:{noun:'#ffffff',propn:'#ffffff',verb:'#FF5A5F',adj:'#FF9AA0',fn:'#7E3A40',base:'#F5E6E8'}},
+  chameleon:{bg:'#060606',fog:0x070707,baseSize:24,posY:0,upper:true,rotate:false,jitter:true,roughness:0.2,metalness:0.7,
+    palette:{noun:'#FF4D4D',propn:'#48A6FF',verb:'#00E5C0',adj:'#FFE14C',fn:'#5a5a55',base:'#ffffff'}},
+  classic:{bg:'#0a0a0a',fog:0x0a0a0a,baseSize:22,posY:0,upper:false,rotate:true,jitter:false,roughness:0.1,metalness:1.0,color:0xd0d0d0}
+};
+let curTheme=GL_THEMES.kinetic_art;
+
+/* ============================================================================
+   PART 4b — EMBODIMENT (DOM): line reconstruction + words-as-imagery metaphors
+   Each line's words fly in and assemble into a shape that embodies its meaning,
+   while the sung word flares. Renders without WebGL (works in sandboxed embeds).
+   ========================================================================== */
+const EMB={ lineIdx:-1, spans:[], metaphor:'row' };
+/* icon vocabulary for the Director's iconography substitution (concept word -> glyph) */
+const ICONS={coffin:'⚰️',candle:'🕯️',hands:'🙏',cage:'🧱',crown:'👑',fire:'🔥',water:'💧',ladder:'🪜',peace:'☮',eyes:'👁',gun:'🔫',money:'💸',skull:'💀',heart:'🤍',star:'★',clock:'⏳'};
+function iconGlyph(n){ return (CONCEPT&&CONCEPT.motifs&&CONCEPT.motifs[n])||ICONS[n]||null; }
+/* paint the song's concept palette into CSS vars so each track renders in its own world (not a default) */
+function applyConcept(){
+  const r=document.documentElement.style, p=(CONCEPT&&CONCEPT.palette)||null;
+  r.setProperty('--ink', (p&&p.ink)||'#EDEAE4');
+  r.setProperty('--accent', (p&&p.accents&&p.accents[0])||'#ff9ec4');
+  r.setProperty('--embbg', (p&&p.bg)||'#0b0c10');
+}
+function lineMetaphor(text){
+  const t=(text||'').toLowerCase();
+  if(/\b(cage|cages|caged|trap|trapped|locked|prison|bars?|boxed?|chain\w*)\b/.test(t)) return 'cage';
+  if(/\b(rise|rising|rose|elevat\w*|escalat\w*|higher|above|climb\w*|soar\w*|ascend\w*|up|heights?)\b/.test(t)) return 'ascend';
+  if(/\b(fall\w*|fell|drop\w*|bottom|sink|sank|sunk|down\w*|crash\w*|low\w*|under)\b/.test(t)) return 'fall';
+  if(/\b(spiral\w*|circle\w*|around|cycle\w*|spin\w*|loop\w*|round|orbit\w*)\b/.test(t)) return 'spiral';
+  if(/\b(path|road|journey|route|street|lane|walk\w*|run\w*|miles?)\b/.test(t)) return 'path';
+  if(/\b(split|divide\w*|break\w*|apart|versus|against|war|fight\w*|two|sides?)\b/.test(t)) return 'split';
+  if(/\b(build\w*|built|stack\w*|pile\w*|tower\w*|ladder|steps?|level\w*)\b/.test(t)) return 'stack';
+  return 'row';
+}
+/* Prefer the AI art-direction cue for this line (matched by start time); else keyword detection. */
+function metaForLine(li){
+  const ls=LINES[li].start;
+  if(METAS.length){ let best=null, bd=1e9;
+    for(const m of METAS){ const d=Math.abs((m.start||0)-ls); if(d<bd){bd=d;best=m;} }
+    if(best && bd<1.0 && best.metaphor && best.metaphor!=='row') return best.metaphor;
+  }
+  return lineMetaphor(LINES[li].text || LINES[li].idx.map(wi=>WORDS[wi].text).join(' '));
+}
+function sceneForLine(li){ if(!SCENES.length) return null; const ls=LINES[li].start; let best=null,bd=1e9;
+  for(const s of SCENES){ const d=Math.abs((s.start||0)-ls); if(d<bd){bd=d;best=s;} } return (best&&bd<1.0)?best:null; }
+function embClear(){ if(embodyLayer){ embodyLayer.innerHTML=''; } EMB.spans=[]; EMB.lineIdx=-1; EMB.sym=null; EMB.fig=null; EMB.scene=null; }
+function embLayoutPx(spans, metaphor){
+  const n=spans.length, vw=window.innerWidth, vh=window.innerHeight;
+  const widths=spans.map(s=>s.w), gh=spans.reduce((a,s)=>Math.max(a,s.h),18);
+  const gap=Math.max(10, gh*0.4), lineH=gh*1.5, pos=[];
+  function rowWrap(){ const maxW=Math.min(vw*0.82,1100), rows=[[]]; let w=0;
+    for(let i=0;i<n;i++){ if(w+widths[i]>maxW && rows[rows.length-1].length){rows.push([]);w=0;} rows[rows.length-1].push(i); w+=widths[i]+gap; }
+    const totalH=(rows.length-1)*lineH;
+    rows.forEach((row,ri)=>{ let rw=row.reduce((a,i)=>a+widths[i],0)+gap*(row.length-1), x=-rw/2; const y=-totalH/2+ri*lineH;
+      row.forEach(i=>{ pos[i]={x:x+widths[i]/2, y:y}; x+=widths[i]+gap; }); }); }
+  if(metaphor==='row'){ rowWrap(); }
+  else if(metaphor==='split'){ rowWrap(); pos.forEach((p,i)=>p.x+=(i%2?1:-1)*Math.min(vw*0.13,150)); }
+  else if(metaphor==='ascend'||metaphor==='fall'){ const spanW=Math.min(vw*0.74,880), stepx=spanW/Math.max(1,n-1), H=Math.min(vh*0.52,380), stepy=H/Math.max(1,n-1), dir=(metaphor==='ascend'?-1:1);
+    for(let i=0;i<n;i++) pos[i]={x:-spanW/2+i*stepx, y:(metaphor==='ascend'?H/2:-H/2)+dir*i*stepy}; }
+  else if(metaphor==='stack'){ const totalH=(n-1)*lineH; for(let i=0;i<n;i++) pos[i]={x:0,y:-totalH/2+i*lineH}; }
+  else if(metaphor==='spiral'){ for(let i=0;i<n;i++){ const a=i*0.7, r=22+i*Math.min(vw,vh)*0.032; pos[i]={x:Math.cos(a)*r, y:Math.sin(a)*r}; } }
+  else if(metaphor==='path'){ const spanW=Math.min(vw*0.82,940); for(let i=0;i<n;i++){ const f=i/Math.max(1,n-1); pos[i]={x:-spanW/2+f*spanW, y:(f-0.5)*Math.min(vh*0.42,320)}; } }
+  else if(metaphor==='cage'){ const W=Math.min(vw*0.5,520), H=Math.min(vh*0.5,360), per=2*(W+H); for(let i=0;i<n;i++){ let d=(i/n)*per,x,y; if(d<W){x=-W/2+d;y=-H/2;} else if(d<W+H){x=W/2;y=-H/2+(d-W);} else if(d<2*W+H){x=W/2-(d-W-H);y=H/2;} else {x=-W/2;y=H/2-(d-2*W-H);} pos[i]={x,y}; } }
+  else if(metaphor==='cagebars'){ const spanW=Math.min(vw*0.72,840), step=spanW/Math.max(1,n); for(let i=0;i<n;i++) pos[i]={x:-spanW/2+step*(i+0.5), y:0}; }
+  else rowWrap();
+  // keep every word fully on-screen — #embody-layer clips overflow, so clamp to a safe inset
+  const mx=vw*0.47, my=vh*0.43;
+  for(let i=0;i<n;i++){ const hw=(widths[i]||40)/2+6, hh=(gh)/2+6;
+    pos[i].x=Math.max(-mx+hw, Math.min(mx-hw, pos[i].x));
+    pos[i].y=Math.max(-my+hh, Math.min(my-hh, pos[i].y)); }
+  return pos;
+}
+function embBuild(li){
+  embClear(); EMB.lineIdx=li; if(li<0||li>=LINES.length) return;
+  const idx=LINES[li].idx; const scene=sceneForLine(li); EMB.scene=scene;
+  const spans=idx.map(wi=>{ const w=WORDS[wi]; const d=w.dir||null;
+    let emph = d? d.emphasis : (FUNCTION_POS.has(w.pos)?0 : (w.pos==='PROPN'?3 : ((w.pos==='NOUN'||w.pos==='VERB')?2:1)));
+    emph=Math.max(0,Math.min(3,emph|0));
+    let cls='ew'+(emph===0?' fn':'');
+    if(d&&d.register==='script') cls+=' script'; else if(d&&d.register==='heavy') cls+=' heavy';
+    if(d&&d.glow) cls+=' glow';
+    const el=document.createElement('span'); el.className=cls; el.textContent=w.text;
+    if(d&&d.icon&&iconGlyph(d.icon)){ const g=iconGlyph(d.icon); const n=Math.max(1,Math.min(4,d.count||1)); for(let c=0;c<n;c++){ const ic=document.createElement('span'); ic.className='ic'; ic.textContent=g; el.appendChild(ic); } }
+    embodyLayer.appendChild(el); return {wi, el, sung:false, placed:false, rot:0, emS:[0.66,0.92,1.16,1.34][emph]}; });
+  spans.forEach(s=>{ s.w=s.el.offsetWidth||40; s.h=s.el.offsetHeight||28; });
+  const metaphor=(scene&&scene.metaphor)||metaForLine(li);
+  const targets=embLayoutPx(spans, metaphor);
+  // scene rotations: e.g. "back" -> 90deg (a figure turning away); cagebars -> all words become vertical bars
+  if(scene&&scene.rotate){ spans.forEach(s=>{ const k=clean(WORDS[s.wi].text); for(const rk in scene.rotate){ if(k===clean(rk)) s.rot=scene.rotate[rk]; } }); }
+  if(metaphor==='cagebars'){ spans.forEach(s=>{ if(!s.rot) s.rot=90; }); }
+  // each word is PARKED (hidden, just below its spot) and only "places" when it is sung (see render loop)
+  spans.forEach((s,i)=>{ const tx=targets[i].x.toFixed(0), ty=targets[i].y.toFixed(0);
+    s.base='translate(calc(-50% + '+tx+'px), calc(-50% + '+ty+'px)) rotate('+s.rot+'deg)';
+    s.el.style.transform='translate(calc(-50% + '+tx+'px), calc(-50% + '+(targets[i].y+38).toFixed(0)+'px)) rotate('+s.rot+'deg) scale('+(s.emS*0.8).toFixed(2)+')';
+    s.el.style.opacity='0'; s.placed=false; });
+  if(scene&&scene.symbol){ const sym=document.createElement('div'); sym.className='esym'; sym.textContent=scene.symbol; embodyLayer.appendChild(sym); EMB.sym={el:sym, on:clean(scene.on||'')}; }
+  if(scene&&scene.figure){ const fig=document.createElement('div'); fig.className='efig'; fig.textContent=(typeof scene.figure==='string'?scene.figure:'🧍'); embodyLayer.appendChild(fig); EMB.fig=fig; }
+  void embodyLayer.offsetWidth;  // reflow so each word's placement animates when revealed
+  EMB.spans=spans; EMB.metaphor=metaphor;
+}
+function renderEmbodimentDOM(now){
+  if(!LINES.length) return;
+  let li=0; for(let k=0;k<LINES.length;k++){ if(now>=LINES[k].start-0.15) li=k; else break; }
+  if(li!==EMB.lineIdx) embBuild(li);
+  const ln=LINES[EMB.lineIdx]; if(!ln) return;
+  for(const s of EMB.spans){ const w=WORDS[s.wi];
+    // PACED-TO-PLACED: a word drops into its spot exactly when it's sung (synced), not all at once
+    if(!s.placed && now>=w.start-0.04){ s.placed=true; s.el.style.opacity=(s.emS<=0.7?'0.6':'1'); s.el.style.transform=s.base+' scale('+s.emS.toFixed(2)+')'; }
+    if(s.placed){ const sung=now>=w.start-0.05 && now<=w.end+0.12;
+      if(sung!==s.sung){ s.sung=sung; s.el.classList.toggle('sung',sung); s.el.style.transform=s.base+' scale('+(s.emS*(sung?1.3:1)).toFixed(2)+')'; } } }
+  // embedded symbol (e.g. peace sign) reveals as its target word is sung
+  if(EMB.sym){ const on = EMB.sym.on ? EMB.spans.some(s=>clean(WORDS[s.wi].text)===EMB.sym.on && now>=WORDS[s.wi].start-0.05)
+                                     : (now>=ln.start+0.2); EMB.sym.el.classList.toggle('on', !!on); }
+  // caged figure "breaks free" late in the line
+  if(EMB.fig && EMB.scene){ const p=(now-ln.start)/Math.max(0.3,(ln.end-ln.start)); EMB.fig.classList.toggle('free', p>(EMB.scene.breakAt||0.7)); }
+}
+
+/* ============================================================================
+   PART 5 — DOM LAYER  (rhyme scheme color-coded karaoke)
+   ========================================================================== */
+const DOM={built:false,lineEls:[],wordEls:[],active:-1,cont:null};
+function buildDOMOnce(){
+  if(DOM.built) return; domLayer.innerHTML=''; DOM.lineEls=[]; DOM.wordEls=new Array(WORDS.length); DOM.active=-1;
+  ensureRhymeGroups();
+  const head=document.createElement('div'); head.id='dom-head';
+  head.innerHTML='<span>'+(TRACK_NAME||'Rhyme Scheme')+'</span><span class="lg">LYRISEE</span>'; domLayer.appendChild(head);
+  const cont=document.createElement('div'); cont.id='dom-lines'; domLayer.appendChild(cont); DOM.cont=cont;
+  LINES.forEach((ln,li)=>{ const le=document.createElement('div'); le.className='line'; le.dataset.li=li;
+    ln.idx.forEach(wi=>{ const w=WORDS[wi]; const ws=document.createElement('span'); ws.className='w'+(w.rhyme>=0?' rg':''); ws.dataset.wi=wi;
+      ws.textContent=w.text.replace(/\s+/g,' ');
+      if(w.rhyme>=0 && RHYME_PAL[w.rhyme]) ws.style.background=RHYME_PAL[w.rhyme];
+      le.appendChild(ws); le.appendChild(document.createTextNode(' ')); DOM.wordEls[wi]=ws; });
+    cont.appendChild(le); DOM.lineEls.push(le); });
+  DOM.built=true;
+}
+function updateDOM(now){
+  if(!LINES.length||!DOM.built) return;
+  let active=0; for(let li=0;li<LINES.length;li++){ if(now>=LINES[li].start-0.2) active=li; else break; }
+  if(active!==DOM.active){
+    if(DOM.active>=0 && LINES[DOM.active]) LINES[DOM.active].idx.forEach(wi=>{const e=DOM.wordEls[wi]; if(e)e.classList.remove('sung');});
+    DOM.active=active;
+    DOM.lineEls.forEach((le,li)=>le.classList.toggle('active', li===active));
+    const le=DOM.lineEls[active]; if(le&&DOM.cont){ const y=Math.max(0, le.offsetTop - domLayer.clientHeight*0.40); DOM.cont.style.transform='translateY('+(-y).toFixed(0)+'px)'; }
+  }
+  for(const wi of LINES[active].idx){ const w=WORDS[wi]; const el=DOM.wordEls[wi]; if(el) el.classList.toggle('sung', now>=w.start-0.04 && now<=w.end+0.14); }
+}
+
+/* ============================================================================
+   PART 6 — CONSTRUCTS
+   ========================================================================== */
+const CONSTRUCTS=[
+  {id:'embodiment',label:'Embodiment — Words as Imagery',layer:'embody',
+   desc:'Each line reconstructs from scattered words and arranges into a shape that embodies its meaning — a cage boxes the words in, "rise/elevate" climbs, "rock bottom" sinks, a "path" runs diagonal, "spiral" curls — while the sung word flares. Legible and metaphorical. (No WebGL needed.)'},
+  {id:'kinetic_art',label:'Kinetic Art — Die Alone Style',layer:'gl',theme:'kinetic_art',
+   desc:'Deep crimson stage. Words ghost until their exact sung moment, then snap bright and scale by part-of-speech — nouns & verbs explode, function words whisper.'},
+  {id:'rhyme_scheme',label:'Rhyme Scheme — Color Coded',layer:'dom',
+   desc:'Centered lyric lines on a dark stage. In-browser phonetic analysis groups rhyming words into colors; each word\'s box flares as it\'s sung.'},
+  {id:'chameleon',label:'Rhyme Matrix — Vivid',layer:'gl',theme:'chameleon',
+   desc:'High-contrast neon kinetic typography with semantic color highlighting and beat-synced motion.'},
+  {id:'classic',label:'Classic 3D Drift',layer:'gl',theme:'classic',
+   desc:'Metallic 3D weave — letters wave and rotate as each word lives and dies.'}
+];
+let cur=CONSTRUCTS[0];
+function populateConstructs(includeGL){
+  constructSel.innerHTML='';
+  CONSTRUCTS.filter(c=>includeGL||c.layer!=='gl').forEach(c=>{const o=document.createElement('option');o.value=c.id;o.textContent=c.label;constructSel.appendChild(o);});
+}
+function setConstruct(id){
+  const c=CONSTRUCTS.find(x=>x.id===id)||CONSTRUCTS[0]; cur=c; constructSel.value=c.id; constructDesc.textContent=c.desc;
+  if(GL.ok){ GL.active.forEach(w=>w.dispose()); GL.active.clear(); }
+  embClear();
+  canvas.style.display    = (c.layer==='gl')     ? 'block' : 'none';
+  domLayer.style.display  = (c.layer==='dom')    ? 'flex'  : 'none';
+  embodyLayer.style.display = (c.layer==='embody') ? 'block' : 'none';
+  if(c.layer==='gl'){ curTheme=GL_THEMES[c.theme]||GL_THEMES.kinetic_art; stage.style.background=curTheme.bg; if(GL.ok&&GL.scene.fog) GL.scene.fog.color.setHex(curTheme.fog); }
+  else if(c.layer==='embody'){ stage.style.background=(CONCEPT&&CONCEPT.palette&&CONCEPT.palette.bg)||'#0b0c10'; }
+  else { stage.style.background='#0a0a0b'; DOM.built=false; buildDOMOnce(); DOM.shownLo=-1; DOM.shownHi=-1; }
+}
+
+/* Intent-driven auto-arrangement: switch construct by section as the song plays */
+function applyArrangement(now){
+  if(!autoArrange || !ARRANGEMENT.length) return;
+  let id=ARRANGEMENT[0].construct;
+  for(const a of ARRANGEMENT){ if(now>=(a.start||0)) id=a.construct; else break; }
+  if(id && id!==cur.id){ setConstruct(id); constructSel.value=cur.id; }
+}
+
+/* ============================================================================
+   PART 7 — RENDER LOOP
+   ========================================================================== */
+function updateBeat(now){
+  let bi=GL.lastBeat; while(bi+1<BEATS.length && BEATS[bi+1]<=now) bi++;
+  if(bi!==GL.lastBeat && bi>=0){ GL.beatPulse=1; GL.lastBeat=bi; }
+  GL.beatPulse*=0.86; if(GL.beatPulse<0.001) GL.beatPulse=0;
+  if(BEATS[GL.lastBeat]>now){ GL.lastBeat=-1; while(GL.lastBeat+1<BEATS.length && BEATS[GL.lastBeat+1]<=now) GL.lastBeat++; }
+}
+let lastNow=0, scrubbing=false;
+function frame(){
+  requestAnimationFrame(frame); Clock.tick();
+  const now=Clock.time; const dt=Math.min(0.05,Math.max(0,now-lastNow)); lastNow=now;
+  if(!scrubbing) scrub.value=Math.round((now/Clock.duration)*1000)||0;
+  timeEl.textContent=fmt(now)+' / '+fmt(Clock.duration);
+  updateBeat(now); applyArrangement(now);
+  if(cur.layer==='embody'){ renderEmbodimentDOM(now); }
+  else if(cur.layer==='gl' && GL.ok && GL.font){
+    const LEAD=0.1,TAIL=0.18;  // tight windows -> few words coexist (no center pile-up)
+    for(let i=0;i<WORDS.length;i++){ const w=WORDS[i]; const on=now>=w.start-LEAD&&now<=w.end+TAIL;
+      if(on&&!GL.active.has(i)) GL.active.set(i,new GLWord(i,curTheme));
+      else if(!on&&GL.active.has(i)){GL.active.get(i).dispose();GL.active.delete(i);} }
+    GL.active.forEach(w=>w.update(now,dt));
+    GL.camera.position.z=260-GL.beatPulse*18; GL.camera.lookAt(0,0,0); GL.renderer.render(GL.scene,GL.camera);
+  } else if(cur.layer==='dom'){ updateDOM(now); }
+}
+
+/* ============================================================================
+   PART 8 — INGEST (any audio + any lyric data + optional in-browser ASR)
+   ========================================================================== */
+let lastAudioFile=null, dataReady=false;
+function setStatus(t){ ingestStatus.textContent=t||''; }
+function refreshPlay(){ playBtn.disabled=!dataReady; }
+function attachAudio(file){
+  lastAudioFile=file; const a=new Audio(); a.src=URL.createObjectURL(file); a.preload='auto';
+  a.addEventListener('loadedmetadata',()=>{ const wasPlaying=Clock.playing; const t=Clock.time; Clock.audio=a;
+    try{a.currentTime=Math.min(t,a.duration||t);}catch(e){} if(wasPlaying)a.play().catch(()=>{}); });
+  if(!TRACK_NAME){ TRACK_NAME=file.name; if(trackNameEl) trackNameEl.textContent=TRACK_NAME; }
+  audioBtn.textContent='♪ '+(file.name.length>16?file.name.slice(0,15)+'…':file.name);
+}
+function onAudioChosen(file){ if(!file) return; attachAudio(file);
+  dropZone.innerHTML='Audio: <b>'+file.name+'</b>';
+  setStatus(dataReady?'Audio attached. Ready to play.':'Audio loaded. Now add a lyric_data.json, or auto-transcribe.'); }
+function onJSONChosen(file){ if(!file) return; const r=new FileReader();
+  r.onload=()=>{ try{ const d=JSON.parse(r.result); const n=loadData(d, TRACK_NAME||file.name.replace(/\.[^.]+$/,'')); if(!n) throw new Error('no words');
+      dataReady=true; setStatus('Loaded '+n+' words · '+LINES.length+' lines'+(BEATS.length?' · '+BEATS.length+' beats':'')+'. Ready.'); refreshPlay(); }
+    catch(e){ setStatus('That isn\'t a lyric_data file — it needs a "words" array of {text,start,end,pos}.'); } };
+  r.readAsText(file); }
+async function autoTranscribe(){
+  if(!lastAudioFile){ setStatus('Load an audio file first.'); return; }
+  xscribeBtn.disabled=true; setStatus('Loading the in-browser speech model… first run downloads a small model and can take a minute.');
+  try{
+    const mod=await import('https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2');
+    mod.env.allowLocalModels=false;
+    const asr=await mod.pipeline('automatic-speech-recognition','Xenova/whisper-tiny.en',{quantized:true});
+    setStatus('Decoding audio…');
+    const buf=await lastAudioFile.arrayBuffer();
+    const AC=window.AudioContext||window.webkitAudioContext; const ac=new AC({sampleRate:16000});
+    const ab=await ac.decodeAudioData(buf); const pcm=ab.getChannelData(0);
+    setStatus('Transcribing… (listening to the whole track)');
+    const out=await asr(pcm,{return_timestamps:'word',chunk_length_s:30,stride_length_s:5});
+    let words=[];
+    if(out&&out.chunks&&out.chunks.length){
+      for(const c of out.chunks){ const txt=(c.text||'').trim(); if(!txt) continue; const ts=c.timestamp||[];
+        const s=+ts[0]||0, e=(ts[1]!=null?+ts[1]:s+0.3);
+        // a chunk may hold multiple words -> split evenly across its span
+        const toks=txt.split(/\s+/).filter(Boolean); const span=Math.max(0.12,(e-s)/toks.length);
+        toks.forEach((tk,j)=>words.push({text:tk,start:+(s+j*span).toFixed(3),end:+(s+(j+1)*span).toFixed(3),pos:quickPOS(tk)})); }
+    }
+    if(!words.length) throw new Error('no words returned');
+    const n=loadData({words,beats:[]}, TRACK_NAME||lastAudioFile.name.replace(/\.[^.]+$/,''));
+    dataReady=true; setStatus('Transcribed '+n+' words · '+LINES.length+' lines. (Tip: your pipeline\'s lyric_data.json will be more accurate.)'); refreshPlay();
+  }catch(e){ console.error(e); setStatus('In-browser transcription couldn\'t run here (needs WebGPU + model download). Drop your pipeline\'s lyric_data.json instead.'); }
+  finally{ xscribeBtn.disabled=false; }
+}
+
+/* ============================================================================
+   PART 8b — LYRIC EDITOR (human-in-the-loop transcript correction)
+   ========================================================================== */
+/* Re-derive WORDS + LINES from edited line rows (text + start time), preserving the
+   user's line structure. Rhyme families, POS weighting and word-forms recompute from this. */
+function rebuildFromLines(editLines){
+  editLines=editLines.filter(l=>l.text&&l.text.trim()).sort((a,b)=>(a.start||0)-(b.start||0));
+  const words=[], lines=[];
+  for(let i=0;i<editLines.length;i++){
+    const ln=editLines[i]; const toks=ln.text.trim().split(/\s+/).filter(Boolean); if(!toks.length) continue;
+    const start=+ln.start||0; let end=+ln.end; if(!(end>start)) end=start+Math.max(1,toks.length*0.3);
+    const weights=toks.map(t=>syllableCount(t)); const tot=weights.reduce((a,b)=>a+b,0)||1; let acc=start; const idx=[];
+    for(let j=0;j<toks.length;j++){ const dur=(end-start)*weights[j]/tot; idx.push(words.length);
+      words.push({text:toks[j],start:+acc.toFixed(3),end:+(acc+dur).toFixed(3),pos:quickPOS(toks[j])}); acc+=dur; }
+    lines.push({idx,start,end});
+  }
+  WORDS=words; LINES=lines; WORD2LINE=new Int32Array(words.length); lines.forEach((l,li)=>l.idx.forEach(wi=>WORD2LINE[wi]=li));
+  DURATION=words.length?Math.max(words[words.length-1].end+2.5,4):8;
+  if(GL.ok){GL.active.forEach(w=>w.dispose());GL.active.clear();}
+  DOM.built=false; domLayer.innerHTML=''; DOM.shownLo=-1; DOM.shownHi=-1; if(cur&&cur.layer==='dom') buildDOMOnce(); GL.lastBeat=-1;
+}
+function edFmt(s){return (Math.round((+s||0)*10)/10).toFixed(1);}
+function edAddRow(start,text){
+  const row=document.createElement('div'); row.className='ed-row';
+  const t=document.createElement('input'); t.type='number'; t.step='0.1'; t.className='ed-t'; t.value=edFmt(start); t.title='line start (seconds)';
+  const x=document.createElement('input'); x.type='text'; x.className='ed-x'; x.value=text||''; x.spellcheck=false;
+  const del=document.createElement('button'); del.className='ed-del'; del.textContent='×'; del.title='delete line'; del.addEventListener('click',()=>row.remove());
+  row.appendChild(t); row.appendChild(x); row.appendChild(del); edList.appendChild(row); return row;
+}
+function edPopulate(){ edList.innerHTML=''; if(!LINES.length){ edAddRow(0,''); return; } LINES.forEach(ln=>edAddRow(ln.start, ln.idx.map(wi=>WORDS[wi].text).join(' '))); }
+function edRead(){
+  const rows=[].slice.call(edList.querySelectorAll('.ed-row'));
+  let lines=rows.map(r=>({start:parseFloat(r.querySelector('.ed-t').value)||0,text:r.querySelector('.ed-x').value||''})).filter(l=>l.text.trim());
+  lines.sort((a,b)=>a.start-b.start);
+  for(let i=0;i<lines.length;i++){ lines[i].end=(i+1<lines.length)?Math.max(lines[i].start+0.4,lines[i+1].start):lines[i].start+Math.max(1,lines[i].text.trim().split(/\s+/).length*0.3); }
+  return lines;
+}
+function edOpen(){ Clock.pause(); edPopulate(); editor.classList.add('open'); }
+function edCloseFn(){ editor.classList.remove('open'); }
+function edApplyFn(){ const lines=edRead(); if(!lines.length){edCloseFn();return;} const at=Clock.time; rebuildFromLines(lines); dataReady=true; refreshPlay(); edCloseFn(); Clock.seek(Math.min(at,DURATION)); Clock.play(); }
+function edDownloadFn(){
+  const lines=edRead(); if(lines.length) rebuildFromLines(lines);
+  const data={words:WORDS,beats:BEATS}; if(ARRANGEMENT.length) data.arrangement=ARRANGEMENT; const txt=JSON.stringify(data);
+  try{ const blob=new Blob([txt],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+    a.download=((TRACK_NAME||'lyrics').replace(/[^\w.-]+/g,'_'))+'_lyric_data.json'; document.body.appendChild(a); a.click(); a.remove(); }catch(e){}
+  if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(txt).then(()=>setStatus('Corrected JSON downloaded (and copied to clipboard).')).catch(()=>{}); }
+}
+
+/* ============================================================================
+   PART 9 — BOOT / WIRING
+   ========================================================================== */
+function start(){ if(!dataReady) return; intro.style.opacity='0'; setTimeout(()=>intro.style.display='none',600); stage.classList.add('playing'); if(!isFinite(Q_T)) Clock.seek(0); Clock.play(); }
+function wireUI(){
+  populateConstructs(true);
+  constructSel.addEventListener('change',()=>{autoArrange=false;setConstruct(constructSel.value);});
+  ppBtn.addEventListener('click',()=>Clock.toggle());
+  scrub.addEventListener('input',()=>{scrubbing=true;Clock.seek(scrub.value/1000*Clock.duration);});
+  scrub.addEventListener('change',()=>{scrubbing=false;});
+  playBtn.addEventListener('click',start);
+  // ingest
+  dropZone.addEventListener('click',()=>audioInput.click());
+  dropZone.addEventListener('dragover',e=>{e.preventDefault();dropZone.classList.add('over');});
+  dropZone.addEventListener('dragleave',()=>dropZone.classList.remove('over'));
+  dropZone.addEventListener('drop',e=>{e.preventDefault();dropZone.classList.remove('over');const f=e.dataTransfer.files[0];
+    if(f){ if(/\.json$/i.test(f.name)) onJSONChosen(f); else onAudioChosen(f); }});
+  audioInput.addEventListener('change',e=>onAudioChosen(e.target.files[0]));
+  audioInput2.addEventListener('change',e=>onAudioChosen(e.target.files[0]));
+  jsonBtn.addEventListener('click',()=>jsonInput.click());
+  jsonInput.addEventListener('change',e=>onJSONChosen(e.target.files[0]));
+  xscribeBtn.addEventListener('click',autoTranscribe);
+  editBtn.addEventListener('click',edOpen);
+  edClose.addEventListener('click',edCloseFn);
+  edApply.addEventListener('click',edApplyFn);
+  edDownload.addEventListener('click',edDownloadFn);
+  edAdd.addEventListener('click',()=>edAddRow(0,''));
+  audioBtn.addEventListener('click',()=>audioInput2.click());
+  demoLink.addEventListener('click',()=>{ const n=loadData(DEMO_DATA,'Dark Nights (demo)'); dataReady=true;
+    setStatus('Demo loaded: '+n+' words · '+LINES.length+' lines. Press Play. (Load audio to hear it in sync.)'); refreshPlay(); });
+  fsBtn.addEventListener('click',()=>{ if(!document.fullscreenElement) stage.requestFullscreen&&stage.requestFullscreen(); else document.exitFullscreen&&document.exitFullscreen(); });
+  document.addEventListener('keydown',e=>{ if(e.code==='Space'){e.preventDefault();Clock.toggle();} else if(e.code==='ArrowRight')Clock.seek(Clock.time+5); else if(e.code==='ArrowLeft')Clock.seek(Clock.time-5); else if(e.key==='f'||e.key==='F')fsBtn.click(); });
+  window.addEventListener('resize',()=>{ if(GL.ok){GL.camera.aspect=window.innerWidth/window.innerHeight;GL.camera.updateProjectionMatrix();GL.renderer.setSize(window.innerWidth,window.innerHeight);} });
+}
+function boot(){
+  wireUI(); setConstruct(Q_CONSTRUCT||CONSTRUCTS[0].id);
+  const fontUrl='https://cdn.jsdelivr.net/npm/three@0.128.0/examples/fonts/helvetiker_bold.typeface.json';
+  const finish=(font)=>{
+    let glok=false; try{ glok=font?initGL(font):false; }catch(e){ glok=false; }
+    if(AUTOLOAD_NAME){ const n=loadData(DEMO_DATA,AUTOLOAD_NAME); dataReady=true; refreshPlay();
+      if(AUTOLOAD_AUDIO){ var aud=new Audio(); aud.src=AUTOLOAD_AUDIO; aud.preload='auto';
+        aud.addEventListener('loadedmetadata',function(){ Clock.audio=aud; }); aud.addEventListener('error',function(){ setStatus('Loaded '+n+' words. (Audio file not found next to this page — use ♪ to load it.)'); });
+        audioBtn.textContent='♪ '+(AUTOLOAD_NAME.length>16?AUTOLOAD_NAME.slice(0,15)+'…':AUTOLOAD_NAME);
+        setStatus('Loaded '+n+' words. Press Play to start — with sound.'); }
+      else setStatus('Loaded '+n+' words.'); }
+    else if(Q_DEMO){ const n=loadData(DEMO_DATA,'Dark Nights (demo)'); dataReady=true; refreshPlay(); setStatus('Demo loaded: '+n+' words.'); }
+    if(!glok){ populateConstructs(false);
+      var glids={kinetic_art:1,chameleon:1,classic:1};
+      ARRANGEMENT=ARRANGEMENT.map(function(a){return glids[a.construct]?Object.assign({},a,{construct:'embodiment'}):a;});
+      if(glids[cur.id]) setConstruct('embodiment');   // keep the DOM word-art layers (Embodiment is the headline look)
+      var nt=document.getElementById('introNote');
+      if(nt) nt.innerHTML+=' <br><span style="color:#b9b6ad">3D constructs need WebGL (unavailable in this view) — using the DOM word-art layers (Embodiment + Rhyme Scheme).</span>'; }
+    if(isFinite(Q_T)) Clock.seek(Q_T);
+    // Autoplay the visual only when there is NO audio (browsers block audio autoplay without a gesture).
+    // With embedded audio, the intro's Play button starts sound + visual together.
+    var canAuto = Q_AUTOPLAY || (AUTOLOAD_NAME && !AUTOLOAD_AUDIO);
+    if(canAuto && dataReady){ start(); if(AUTOLOAD_NAME && !isFinite(Q_T) && AUTOLOAD_SEEK) Clock.seek(AUTOLOAD_SEEK); }
+    frame();
+  };
+  if(typeof THREE==='undefined'){ finish(null); return; }
+  try{ new THREE.FontLoader().load(fontUrl, f=>finish(f), undefined, ()=>finish(null)); }catch(e){ finish(null); }
+}
+boot();
+})();
+</script>
+</body>
+</html>

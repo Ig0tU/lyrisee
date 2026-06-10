@@ -1,0 +1,4013 @@
+{
+    "words": [
+        {
+            "text": "Go",
+            "start": 0.9,
+            "end": 1.0,
+            "pos": "VERB"
+        },
+        {
+            "text": "back",
+            "start": 1.0,
+            "end": 1.28,
+            "pos": "ADV"
+        },
+        {
+            "text": "to",
+            "start": 1.28,
+            "end": 1.54,
+            "pos": "ADP"
+        },
+        {
+            "text": "my",
+            "start": 1.54,
+            "end": 1.68,
+            "pos": "PRON"
+        },
+        {
+            "text": "old",
+            "start": 1.68,
+            "end": 1.88,
+            "pos": "ADJ"
+        },
+        {
+            "text": "ways,",
+            "start": 1.88,
+            "end": 2.3,
+            "pos": "NOUN"
+        },
+        {
+            "text": "trying",
+            "start": 2.8,
+            "end": 2.96,
+            "pos": "VERB"
+        },
+        {
+            "text": "to",
+            "start": 2.96,
+            "end": 3.14,
+            "pos": "PART"
+        },
+        {
+            "text": "just",
+            "start": 3.14,
+            "end": 3.32,
+            "pos": "ADV"
+        },
+        {
+            "text": "find",
+            "start": 3.32,
+            "end": 3.54,
+            "pos": "VERB"
+        },
+        {
+            "text": "some",
+            "start": 3.54,
+            "end": 3.82,
+            "pos": "DET"
+        },
+        {
+            "text": "peace.",
+            "start": 3.82,
+            "end": 4.28,
+            "pos": "NOUN"
+        },
+        {
+            "text": "Don't",
+            "start": 4.8,
+            "end": 4.96,
+            "pos": "AUX"
+        },
+        {
+            "text": "want",
+            "start": 4.96,
+            "end": 5.16,
+            "pos": "VERB"
+        },
+        {
+            "text": "to",
+            "start": 5.16,
+            "end": 5.26,
+            "pos": "PART"
+        },
+        {
+            "text": "be",
+            "start": 5.26,
+            "end": 5.42,
+            "pos": "AUX"
+        },
+        {
+            "text": "trapped",
+            "start": 5.48,
+            "end": 5.76,
+            "pos": "VERB"
+        },
+        {
+            "text": "in",
+            "start": 5.76,
+            "end": 5.96,
+            "pos": "ADP"
+        },
+        {
+            "text": "a",
+            "start": 5.96,
+            "end": 6.04,
+            "pos": "DET"
+        },
+        {
+            "text": "small",
+            "start": 6.04,
+            "end": 6.32,
+            "pos": "ADJ"
+        },
+        {
+            "text": "cage.",
+            "start": 6.32,
+            "end": 6.68,
+            "pos": "NOUN"
+        },
+        {
+            "text": "Now",
+            "start": 7.06,
+            "end": 7.1,
+            "pos": "ADV"
+        },
+        {
+            "text": "imagine",
+            "start": 7.1,
+            "end": 7.52,
+            "pos": "VERB"
+        },
+        {
+            "text": "if",
+            "start": 7.52,
+            "end": 7.76,
+            "pos": "SCONJ"
+        },
+        {
+            "text": "I",
+            "start": 7.76,
+            "end": 8.0,
+            "pos": "PRON"
+        },
+        {
+            "text": "was",
+            "start": 8.0,
+            "end": 8.26,
+            "pos": "AUX"
+        },
+        {
+            "text": "free.",
+            "start": 8.26,
+            "end": 8.58,
+            "pos": "ADJ"
+        },
+        {
+            "text": "Oh,",
+            "start": 8.84,
+            "end": 8.9,
+            "pos": "INTJ"
+        },
+        {
+            "text": "just",
+            "start": 9.22,
+            "end": 9.46,
+            "pos": "ADV"
+        },
+        {
+            "text": "picture",
+            "start": 9.46,
+            "end": 9.74,
+            "pos": "NOUN"
+        },
+        {
+            "text": "if",
+            "start": 9.74,
+            "end": 10.02,
+            "pos": "SCONJ"
+        },
+        {
+            "text": "I",
+            "start": 10.1,
+            "end": 10.24,
+            "pos": "PRON"
+        },
+        {
+            "text": "was",
+            "start": 10.24,
+            "end": 10.48,
+            "pos": "AUX"
+        },
+        {
+            "text": "famous.",
+            "start": 10.48,
+            "end": 10.9,
+            "pos": "ADJ"
+        },
+        {
+            "text": "Then",
+            "start": 11.44,
+            "end": 11.52,
+            "pos": "ADV"
+        },
+        {
+            "text": "envision",
+            "start": 11.52,
+            "end": 11.9,
+            "pos": "VERB"
+        },
+        {
+            "text": "the",
+            "start": 11.9,
+            "end": 12.2,
+            "pos": "DET"
+        },
+        {
+            "text": "height",
+            "start": 12.2,
+            "end": 12.44,
+            "pos": "NOUN"
+        },
+        {
+            "text": "I'd",
+            "start": 12.44,
+            "end": 12.88,
+            "pos": "PRON"
+        },
+        {
+            "text": "reach.",
+            "start": 12.88,
+            "end": 12.98,
+            "pos": "VERB"
+        },
+        {
+            "text": "Now",
+            "start": 13.7,
+            "end": 13.82,
+            "pos": "ADV"
+        },
+        {
+            "text": "try",
+            "start": 13.82,
+            "end": 14.0,
+            "pos": "VERB"
+        },
+        {
+            "text": "to",
+            "start": 14.0,
+            "end": 14.08,
+            "pos": "PART"
+        },
+        {
+            "text": "find",
+            "start": 14.08,
+            "end": 14.28,
+            "pos": "VERB"
+        },
+        {
+            "text": "the",
+            "start": 14.28,
+            "end": 14.42,
+            "pos": "DET"
+        },
+        {
+            "text": "path",
+            "start": 14.42,
+            "end": 14.62,
+            "pos": "NOUN"
+        },
+        {
+            "text": "to",
+            "start": 14.62,
+            "end": 14.86,
+            "pos": "ADP"
+        },
+        {
+            "text": "the",
+            "start": 14.86,
+            "end": 14.96,
+            "pos": "DET"
+        },
+        {
+            "text": "way",
+            "start": 14.96,
+            "end": 15.18,
+            "pos": "NOUN"
+        },
+        {
+            "text": "up.",
+            "start": 15.18,
+            "end": 15.52,
+            "pos": "ADV"
+        },
+        {
+            "text": "Way",
+            "start": 15.84,
+            "end": 15.94,
+            "pos": "NOUN"
+        },
+        {
+            "text": "up.",
+            "start": 15.94,
+            "end": 16.42,
+            "pos": "ADP"
+        },
+        {
+            "text": "Dang.",
+            "start": 16.72,
+            "end": 16.9,
+            "pos": "PUNCT"
+        },
+        {
+            "text": "I'm",
+            "start": 17.22,
+            "end": 17.28,
+            "pos": "PRON"
+        },
+        {
+            "text": "sick",
+            "start": 17.28,
+            "end": 17.44,
+            "pos": "ADJ"
+        },
+        {
+            "text": "of",
+            "start": 17.44,
+            "end": 17.56,
+            "pos": "ADP"
+        },
+        {
+            "text": "these",
+            "start": 17.56,
+            "end": 17.7,
+            "pos": "DET"
+        },
+        {
+            "text": "bad",
+            "start": 17.7,
+            "end": 18.3,
+            "pos": "ADJ"
+        },
+        {
+            "text": "days",
+            "start": 18.3,
+            "end": 18.64,
+            "pos": "NOUN"
+        },
+        {
+            "text": "and",
+            "start": 18.64,
+            "end": 18.9,
+            "pos": "CCONJ"
+        },
+        {
+            "text": "organize.",
+            "start": 18.9,
+            "end": 19.28,
+            "pos": "VERB"
+        },
+        {
+            "text": "Every",
+            "start": 19.78,
+            "end": 19.96,
+            "pos": "DET"
+        },
+        {
+            "text": "little",
+            "start": 19.96,
+            "end": 20.2,
+            "pos": "ADJ"
+        },
+        {
+            "text": "pad",
+            "start": 20.2,
+            "end": 20.48,
+            "pos": "NOUN"
+        },
+        {
+            "text": "page",
+            "start": 20.48,
+            "end": 20.82,
+            "pos": "NOUN"
+        },
+        {
+            "text": "is",
+            "start": 20.82,
+            "end": 21.04,
+            "pos": "AUX"
+        },
+        {
+            "text": "a",
+            "start": 21.04,
+            "end": 21.1,
+            "pos": "DET"
+        },
+        {
+            "text": "bar",
+            "start": 21.1,
+            "end": 21.28,
+            "pos": "NOUN"
+        },
+        {
+            "text": "fight.",
+            "start": 21.28,
+            "end": 21.56,
+            "pos": "NOUN"
+        },
+        {
+            "text": "But,",
+            "start": 22.0,
+            "end": 22.16,
+            "pos": "CCONJ"
+        },
+        {
+            "text": "a",
+            "start": 22.26,
+            "end": 22.5,
+            "pos": "DET"
+        },
+        {
+            "text": "cash",
+            "start": 22.5,
+            "end": 22.78,
+            "pos": "NOUN"
+        },
+        {
+            "text": "made",
+            "start": 22.78,
+            "end": 22.98,
+            "pos": "VERB"
+        },
+        {
+            "text": "paid",
+            "start": 22.98,
+            "end": 23.36,
+            "pos": "VERB"
+        },
+        {
+            "text": "all",
+            "start": 23.36,
+            "end": 23.54,
+            "pos": "DET"
+        },
+        {
+            "text": "price.",
+            "start": 23.54,
+            "end": 23.86,
+            "pos": "NOUN"
+        },
+        {
+            "text": "Now",
+            "start": 24.22,
+            "end": 24.32,
+            "pos": "ADV"
+        },
+        {
+            "text": "I",
+            "start": 24.32,
+            "end": 24.38,
+            "pos": "PRON"
+        },
+        {
+            "text": "feel",
+            "start": 24.38,
+            "end": 24.54,
+            "pos": "VERB"
+        },
+        {
+            "text": "the",
+            "start": 24.54,
+            "end": 24.68,
+            "pos": "DET"
+        },
+        {
+            "text": "pad",
+            "start": 24.68,
+            "end": 24.92,
+            "pos": "NOUN"
+        },
+        {
+            "text": "pay,",
+            "start": 24.92,
+            "end": 25.18,
+            "pos": "NOUN"
+        },
+        {
+            "text": "but",
+            "start": 25.38,
+            "end": 25.38,
+            "pos": "CCONJ"
+        },
+        {
+            "text": "the",
+            "start": 25.38,
+            "end": 25.56,
+            "pos": "PRON"
+        },
+        {
+            "text": "aren't",
+            "start": 25.56,
+            "end": 25.92,
+            "pos": "AUX"
+        },
+        {
+            "text": "lights.",
+            "start": 25.92,
+            "end": 26.12,
+            "pos": "NOUN"
+        },
+        {
+            "text": "No,",
+            "start": 26.44,
+            "end": 26.56,
+            "pos": "INTJ"
+        },
+        {
+            "text": "I",
+            "start": 26.8,
+            "end": 26.92,
+            "pos": "PRON"
+        },
+        {
+            "text": "stand",
+            "start": 26.92,
+            "end": 27.1,
+            "pos": "VERB"
+        },
+        {
+            "text": "by.",
+            "start": 27.1,
+            "end": 27.4,
+            "pos": "ADP"
+        },
+        {
+            "text": "Every",
+            "start": 27.58,
+            "end": 27.7,
+            "pos": "DET"
+        },
+        {
+            "text": "bar",
+            "start": 27.7,
+            "end": 28.0,
+            "pos": "NOUN"
+        },
+        {
+            "text": "I",
+            "start": 28.0,
+            "end": 28.42,
+            "pos": "PRON"
+        },
+        {
+            "text": "grow.",
+            "start": 28.42,
+            "end": 28.76,
+            "pos": "VERB"
+        },
+        {
+            "text": "My",
+            "start": 29.14,
+            "end": 29.26,
+            "pos": "PRON"
+        },
+        {
+            "text": "depiction",
+            "start": 29.26,
+            "end": 29.6,
+            "pos": "NOUN"
+        },
+        {
+            "text": "of",
+            "start": 29.6,
+            "end": 29.84,
+            "pos": "ADP"
+        },
+        {
+            "text": "a",
+            "start": 29.84,
+            "end": 29.94,
+            "pos": "DET"
+        },
+        {
+            "text": "hard",
+            "start": 29.94,
+            "end": 30.26,
+            "pos": "ADJ"
+        },
+        {
+            "text": "life.",
+            "start": 30.26,
+            "end": 30.6,
+            "pos": "NOUN"
+        },
+        {
+            "text": "Don't",
+            "start": 30.92,
+            "end": 31.02,
+            "pos": "AUX"
+        },
+        {
+            "text": "judge",
+            "start": 31.02,
+            "end": 31.22,
+            "pos": "VERB"
+        },
+        {
+            "text": "me.",
+            "start": 31.22,
+            "end": 31.48,
+            "pos": "PRON"
+        },
+        {
+            "text": "You",
+            "start": 31.56,
+            "end": 31.62,
+            "pos": "PRON"
+        },
+        {
+            "text": "know,",
+            "start": 31.62,
+            "end": 31.66,
+            "pos": "VERB"
+        },
+        {
+            "text": "I'm",
+            "start": 31.7,
+            "end": 31.74,
+            "pos": "PRON"
+        },
+        {
+            "text": "feeling",
+            "start": 31.74,
+            "end": 31.82,
+            "pos": "VERB"
+        },
+        {
+            "text": "like",
+            "start": 31.82,
+            "end": 32.1,
+            "pos": "SCONJ"
+        },
+        {
+            "text": "I'm",
+            "start": 32.1,
+            "end": 32.26,
+            "pos": "PRON"
+        },
+        {
+            "text": "hot.",
+            "start": 32.26,
+            "end": 32.44,
+            "pos": "ADJ"
+        },
+        {
+            "text": "However,",
+            "start": 32.58,
+            "end": 32.72,
+            "pos": "ADV"
+        },
+        {
+            "text": "don't",
+            "start": 32.78,
+            "end": 32.92,
+            "pos": "AUX"
+        },
+        {
+            "text": "give",
+            "start": 32.92,
+            "end": 33.04,
+            "pos": "VERB"
+        },
+        {
+            "text": "a",
+            "start": 33.04,
+            "end": 33.2,
+            "pos": "DET"
+        },
+        {
+            "text": "fuck.",
+            "start": 33.2,
+            "end": 33.3,
+            "pos": "NOUN"
+        },
+        {
+            "text": "And",
+            "start": 33.58,
+            "end": 33.66,
+            "pos": "CCONJ"
+        },
+        {
+            "text": "I'm",
+            "start": 33.66,
+            "end": 33.82,
+            "pos": "PRON"
+        },
+        {
+            "text": "the",
+            "start": 33.82,
+            "end": 33.88,
+            "pos": "DET"
+        },
+        {
+            "text": "one",
+            "start": 33.88,
+            "end": 34.02,
+            "pos": "NOUN"
+        },
+        {
+            "text": "they",
+            "start": 34.02,
+            "end": 34.16,
+            "pos": "PRON"
+        },
+        {
+            "text": "got",
+            "start": 34.16,
+            "end": 34.34,
+            "pos": "VERB"
+        },
+        {
+            "text": "all",
+            "start": 34.34,
+            "end": 34.68,
+            "pos": "DET"
+        },
+        {
+            "text": "eyes",
+            "start": 34.68,
+            "end": 35.18,
+            "pos": "NOUN"
+        },
+        {
+            "text": "on",
+            "start": 35.18,
+            "end": 35.48,
+            "pos": "ADP"
+        },
+        {
+            "text": "all",
+            "start": 35.48,
+            "end": 35.74,
+            "pos": "ADV"
+        },
+        {
+            "text": "about",
+            "start": 35.74,
+            "end": 35.96,
+            "pos": "ADP"
+        },
+        {
+            "text": "the",
+            "start": 35.96,
+            "end": 36.08,
+            "pos": "DET"
+        },
+        {
+            "text": "money.",
+            "start": 36.08,
+            "end": 36.26,
+            "pos": "NOUN"
+        },
+        {
+            "text": "He's",
+            "start": 36.48,
+            "end": 36.7,
+            "pos": "PRON"
+        },
+        {
+            "text": "so",
+            "start": 36.72,
+            "end": 36.84,
+            "pos": "ADV"
+        },
+        {
+            "text": "pie",
+            "start": 36.84,
+            "end": 37.3,
+            "pos": "NOUN"
+        },
+        {
+            "text": "-thought.",
+            "start": 37.3,
+            "end": 37.58,
+            "pos": "NOUN"
+        },
+        {
+            "text": "Even",
+            "start": 37.84,
+            "end": 37.98,
+            "pos": "ADV"
+        },
+        {
+            "text": "with",
+            "start": 37.98,
+            "end": 38.18,
+            "pos": "ADP"
+        },
+        {
+            "text": "a",
+            "start": 38.18,
+            "end": 38.34,
+            "pos": "DET"
+        },
+        {
+            "text": "flesh",
+            "start": 38.42,
+            "end": 38.54,
+            "pos": "NOUN"
+        },
+        {
+            "text": "wound.",
+            "start": 38.54,
+            "end": 38.82,
+            "pos": "NOUN"
+        },
+        {
+            "text": "Go",
+            "start": 38.98,
+            "end": 39.1,
+            "pos": "VERB"
+        },
+        {
+            "text": "right",
+            "start": 39.1,
+            "end": 39.54,
+            "pos": "ADV"
+        },
+        {
+            "text": "on",
+            "start": 39.54,
+            "end": 39.9,
+            "pos": "ADV"
+        },
+        {
+            "text": "to",
+            "start": 40.02,
+            "end": 40.16,
+            "pos": "ADP"
+        },
+        {
+            "text": "the",
+            "start": 40.16,
+            "end": 40.26,
+            "pos": "DET"
+        },
+        {
+            "text": "next",
+            "start": 40.26,
+            "end": 40.52,
+            "pos": "ADJ"
+        },
+        {
+            "text": "target",
+            "start": 40.52,
+            "end": 40.88,
+            "pos": "NOUN"
+        },
+        {
+            "text": "to",
+            "start": 40.88,
+            "end": 41.12,
+            "pos": "ADP"
+        },
+        {
+            "text": "all",
+            "start": 41.12,
+            "end": 41.28,
+            "pos": "DET"
+        },
+        {
+            "text": "price.",
+            "start": 41.28,
+            "end": 41.72,
+            "pos": "NOUN"
+        },
+        {
+            "text": "God.",
+            "start": 41.94,
+            "end": 42.04,
+            "pos": "PUNCT"
+        },
+        {
+            "text": "Oh",
+            "start": 42.26,
+            "end": 42.42,
+            "pos": "INTJ"
+        },
+        {
+            "text": "my",
+            "start": 42.42,
+            "end": 42.8,
+            "pos": "PRON"
+        },
+        {
+            "text": "God.",
+            "start": 42.8,
+            "end": 43.14,
+            "pos": "PROPN"
+        },
+        {
+            "text": "Mad",
+            "start": 43.44,
+            "end": 43.6,
+            "pos": "ADJ"
+        },
+        {
+            "text": "like",
+            "start": 43.6,
+            "end": 43.88,
+            "pos": "ADP"
+        },
+        {
+            "text": "who?",
+            "start": 43.88,
+            "end": 44.22,
+            "pos": "PRON"
+        },
+        {
+            "text": "Float",
+            "start": 44.72,
+            "end": 44.82,
+            "pos": "VERB"
+        },
+        {
+            "text": "like",
+            "start": 44.82,
+            "end": 45.0,
+            "pos": "ADP"
+        },
+        {
+            "text": "what?",
+            "start": 45.0,
+            "end": 45.28,
+            "pos": "PRON"
+        },
+        {
+            "text": "The",
+            "start": 45.52,
+            "end": 45.52,
+            "pos": "DET"
+        },
+        {
+            "text": "press",
+            "start": 45.6,
+            "end": 45.72,
+            "pos": "NOUN"
+        },
+        {
+            "text": "like",
+            "start": 45.72,
+            "end": 46.1,
+            "pos": "ADP"
+        },
+        {
+            "text": "them?",
+            "start": 46.1,
+            "end": 46.4,
+            "pos": "PRON"
+        },
+        {
+            "text": "No,",
+            "start": 46.64,
+            "end": 46.74,
+            "pos": "INTJ"
+        },
+        {
+            "text": "I'm",
+            "start": 47.1,
+            "end": 47.36,
+            "pos": "PRON"
+        },
+        {
+            "text": "not.",
+            "start": 47.36,
+            "end": 47.6,
+            "pos": "PART"
+        },
+        {
+            "text": "Or",
+            "start": 47.76,
+            "end": 47.82,
+            "pos": "CCONJ"
+        },
+        {
+            "text": "so",
+            "start": 47.82,
+            "end": 48.0,
+            "pos": "ADV"
+        },
+        {
+            "text": "I",
+            "start": 48.0,
+            "end": 48.4,
+            "pos": "PRON"
+        },
+        {
+            "text": "thought",
+            "start": 48.4,
+            "end": 48.68,
+            "pos": "VERB"
+        },
+        {
+            "text": "until",
+            "start": 48.68,
+            "end": 49.02,
+            "pos": "SCONJ"
+        },
+        {
+            "text": "I",
+            "start": 49.02,
+            "end": 49.16,
+            "pos": "PRON"
+        },
+        {
+            "text": "wake",
+            "start": 49.16,
+            "end": 49.36,
+            "pos": "VERB"
+        },
+        {
+            "text": "up",
+            "start": 49.36,
+            "end": 49.64,
+            "pos": "ADP"
+        },
+        {
+            "text": "and",
+            "start": 49.64,
+            "end": 49.86,
+            "pos": "CCONJ"
+        },
+        {
+            "text": "I'm",
+            "start": 49.86,
+            "end": 50.02,
+            "pos": "PRON"
+        },
+        {
+            "text": "so",
+            "start": 50.02,
+            "end": 50.2,
+            "pos": "ADV"
+        },
+        {
+            "text": "mind",
+            "start": 50.2,
+            "end": 50.64,
+            "pos": "NOUN"
+        },
+        {
+            "text": "-boggling.",
+            "start": 50.64,
+            "end": 51.1,
+            "pos": "VERB"
+        },
+        {
+            "text": "Go",
+            "start": 51.24,
+            "end": 51.32,
+            "pos": "AUX"
+        },
+        {
+            "text": "find",
+            "start": 51.32,
+            "end": 51.76,
+            "pos": "VERB"
+        },
+        {
+            "text": "raw",
+            "start": 51.76,
+            "end": 52.04,
+            "pos": "ADJ"
+        },
+        {
+            "text": "smoke.",
+            "start": 52.04,
+            "end": 52.38,
+            "pos": "NOUN"
+        },
+        {
+            "text": "My",
+            "start": 52.74,
+            "end": 52.84,
+            "pos": "PRON"
+        },
+        {
+            "text": "thoughts",
+            "start": 52.84,
+            "end": 53.2,
+            "pos": "NOUN"
+        },
+        {
+            "text": "sober",
+            "start": 53.58,
+            "end": 53.68,
+            "pos": "ADJ"
+        },
+        {
+            "text": "again.",
+            "start": 53.68,
+            "end": 54.06,
+            "pos": "ADV"
+        },
+        {
+            "text": "Go",
+            "start": 54.48,
+            "end": 54.64,
+            "pos": "VERB"
+        },
+        {
+            "text": "try",
+            "start": 54.64,
+            "end": 55.16,
+            "pos": "VERB"
+        },
+        {
+            "text": "and",
+            "start": 55.16,
+            "end": 55.3,
+            "pos": "CCONJ"
+        },
+        {
+            "text": "get",
+            "start": 55.3,
+            "end": 55.42,
+            "pos": "VERB"
+        },
+        {
+            "text": "a",
+            "start": 55.42,
+            "end": 55.54,
+            "pos": "DET"
+        },
+        {
+            "text": "pinch",
+            "start": 55.54,
+            "end": 55.72,
+            "pos": "NOUN"
+        },
+        {
+            "text": "dog.",
+            "start": 55.72,
+            "end": 56.02,
+            "pos": "NOUN"
+        },
+        {
+            "text": "But",
+            "start": 56.34,
+            "end": 56.42,
+            "pos": "CCONJ"
+        },
+        {
+            "text": "this",
+            "start": 56.42,
+            "end": 56.5,
+            "pos": "PRON"
+        },
+        {
+            "text": "I",
+            "start": 56.5,
+            "end": 56.64,
+            "pos": "PRON"
+        },
+        {
+            "text": "don't",
+            "start": 56.64,
+            "end": 56.94,
+            "pos": "AUX"
+        },
+        {
+            "text": "remember",
+            "start": 57.02,
+            "end": 57.2,
+            "pos": "VERB"
+        },
+        {
+            "text": "people.",
+            "start": 57.2,
+            "end": 57.54,
+            "pos": "NOUN"
+        },
+        {
+            "text": "Oh,",
+            "start": 57.84,
+            "end": 57.96,
+            "pos": "INTJ"
+        },
+        {
+            "text": "but",
+            "start": 58.12,
+            "end": 58.16,
+            "pos": "CCONJ"
+        },
+        {
+            "text": "this",
+            "start": 58.16,
+            "end": 58.34,
+            "pos": "DET"
+        },
+        {
+            "text": "shit",
+            "start": 58.34,
+            "end": 58.48,
+            "pos": "NOUN"
+        },
+        {
+            "text": "nobody's",
+            "start": 58.48,
+            "end": 58.94,
+            "pos": "PRON"
+        },
+        {
+            "text": "called.",
+            "start": 58.94,
+            "end": 58.98,
+            "pos": "VERB"
+        },
+        {
+            "text": "You",
+            "start": 59.0,
+            "end": 59.32,
+            "pos": "PRON"
+        },
+        {
+            "text": "know",
+            "start": 59.32,
+            "end": 59.72,
+            "pos": "VERB"
+        },
+        {
+            "text": "what,",
+            "start": 59.72,
+            "end": 59.72,
+            "pos": "PRON"
+        },
+        {
+            "text": "I'm",
+            "start": 59.72,
+            "end": 59.72,
+            "pos": "PRON"
+        },
+        {
+            "text": "saying",
+            "start": 59.72,
+            "end": 59.72,
+            "pos": "VERB"
+        },
+        {
+            "text": "I",
+            "start": 59.72,
+            "end": 59.98,
+            "pos": "PRON"
+        },
+        {
+            "text": "rock",
+            "start": 59.98,
+            "end": 60.18,
+            "pos": "VERB"
+        },
+        {
+            "text": "fuck",
+            "start": 60.18,
+            "end": 60.46,
+            "pos": "NOUN"
+        },
+        {
+            "text": "that",
+            "start": 60.46,
+            "end": 60.66,
+            "pos": "PRON"
+        },
+        {
+            "text": "you",
+            "start": 60.66,
+            "end": 60.82,
+            "pos": "PRON"
+        },
+        {
+            "text": "know",
+            "start": 60.82,
+            "end": 60.96,
+            "pos": "VERB"
+        },
+        {
+            "text": "what,",
+            "start": 60.96,
+            "end": 61.08,
+            "pos": "PRON"
+        },
+        {
+            "text": "bold.",
+            "start": 61.18,
+            "end": 61.36,
+            "pos": "ADJ"
+        },
+        {
+            "text": "And",
+            "start": 61.44,
+            "end": 61.54,
+            "pos": "CCONJ"
+        },
+        {
+            "text": "then",
+            "start": 61.54,
+            "end": 61.62,
+            "pos": "ADV"
+        },
+        {
+            "text": "come",
+            "start": 61.62,
+            "end": 61.78,
+            "pos": "VERB"
+        },
+        {
+            "text": "get",
+            "start": 61.78,
+            "end": 61.88,
+            "pos": "VERB"
+        },
+        {
+            "text": "you.",
+            "start": 61.88,
+            "end": 62.1,
+            "pos": "PRON"
+        },
+        {
+            "text": "And",
+            "start": 63.04,
+            "end": 63.14,
+            "pos": "CCONJ"
+        },
+        {
+            "text": "just",
+            "start": 63.14,
+            "end": 63.32,
+            "pos": "ADV"
+        },
+        {
+            "text": "hold",
+            "start": 63.32,
+            "end": 63.54,
+            "pos": "VERB"
+        },
+        {
+            "text": "it",
+            "start": 63.54,
+            "end": 63.74,
+            "pos": "PRON"
+        },
+        {
+            "text": "and",
+            "start": 63.74,
+            "end": 63.88,
+            "pos": "CCONJ"
+        },
+        {
+            "text": "everybody",
+            "start": 63.88,
+            "end": 64.22,
+            "pos": "PRON"
+        },
+        {
+            "text": "blacked",
+            "start": 64.22,
+            "end": 64.8,
+            "pos": "VERB"
+        },
+        {
+            "text": "out",
+            "start": 64.8,
+            "end": 64.94,
+            "pos": "ADP"
+        },
+        {
+            "text": "like",
+            "start": 64.94,
+            "end": 65.12,
+            "pos": "ADP"
+        },
+        {
+            "text": "the",
+            "start": 65.12,
+            "end": 65.26,
+            "pos": "DET"
+        },
+        {
+            "text": "cops",
+            "start": 65.3,
+            "end": 65.44,
+            "pos": "NOUN"
+        },
+        {
+            "text": "world.",
+            "start": 65.44,
+            "end": 65.74,
+            "pos": "NOUN"
+        },
+        {
+            "text": "Again.",
+            "start": 65.88,
+            "end": 66.08,
+            "pos": "PUNCT"
+        },
+        {
+            "text": "Hope",
+            "start": 66.2,
+            "end": 66.26,
+            "pos": "VERB"
+        },
+        {
+            "text": "they",
+            "start": 66.26,
+            "end": 66.34,
+            "pos": "PRON"
+        },
+        {
+            "text": "burn",
+            "start": 66.4,
+            "end": 66.54,
+            "pos": "VERB"
+        },
+        {
+            "text": "it.",
+            "start": 66.54,
+            "end": 66.62,
+            "pos": "PRON"
+        },
+        {
+            "text": "Hope",
+            "start": 66.74,
+            "end": 66.82,
+            "pos": "VERB"
+        },
+        {
+            "text": "on",
+            "start": 66.82,
+            "end": 67.06,
+            "pos": "ADP"
+        },
+        {
+            "text": "the",
+            "start": 67.06,
+            "end": 67.18,
+            "pos": "DET"
+        },
+        {
+            "text": "cup",
+            "start": 67.18,
+            "end": 67.34,
+            "pos": "NOUN"
+        },
+        {
+            "text": "of",
+            "start": 67.36,
+            "end": 67.48,
+            "pos": "ADP"
+        },
+        {
+            "text": "Joe.",
+            "start": 67.48,
+            "end": 67.68,
+            "pos": "PROPN"
+        },
+        {
+            "text": "Brogan",
+            "start": 67.82,
+            "end": 68.2,
+            "pos": "PROPN"
+        },
+        {
+            "text": "is",
+            "start": 68.2,
+            "end": 68.5,
+            "pos": "AUX"
+        },
+        {
+            "text": "good.",
+            "start": 68.5,
+            "end": 68.72,
+            "pos": "ADJ"
+        },
+        {
+            "text": "This",
+            "start": 68.94,
+            "end": 69.42,
+            "pos": "PRON"
+        },
+        {
+            "text": "is",
+            "start": 69.42,
+            "end": 69.54,
+            "pos": "AUX"
+        },
+        {
+            "text": "some",
+            "start": 69.54,
+            "end": 69.7,
+            "pos": "DET"
+        },
+        {
+            "text": "taste",
+            "start": 69.7,
+            "end": 69.9,
+            "pos": "NOUN"
+        },
+        {
+            "text": "broke.",
+            "start": 69.9,
+            "end": 70.2,
+            "pos": "VERB"
+        },
+        {
+            "text": "And",
+            "start": 70.44,
+            "end": 70.44,
+            "pos": "CCONJ"
+        },
+        {
+            "text": "so",
+            "start": 70.44,
+            "end": 70.54,
+            "pos": "ADV"
+        },
+        {
+            "text": "him",
+            "start": 70.54,
+            "end": 70.72,
+            "pos": "PRON"
+        },
+        {
+            "text": "and",
+            "start": 70.72,
+            "end": 70.8,
+            "pos": "CCONJ"
+        },
+        {
+            "text": "my",
+            "start": 70.8,
+            "end": 70.96,
+            "pos": "PRON"
+        },
+        {
+            "text": "supposed",
+            "start": 70.96,
+            "end": 71.26,
+            "pos": "VERB"
+        },
+        {
+            "text": "to",
+            "start": 71.26,
+            "end": 71.56,
+            "pos": "PART"
+        },
+        {
+            "text": "use",
+            "start": 71.56,
+            "end": 71.82,
+            "pos": "VERB"
+        },
+        {
+            "text": "all",
+            "start": 71.82,
+            "end": 71.98,
+            "pos": "PRON"
+        },
+        {
+            "text": "of",
+            "start": 71.98,
+            "end": 72.04,
+            "pos": "ADP"
+        },
+        {
+            "text": "this",
+            "start": 72.04,
+            "end": 72.22,
+            "pos": "DET"
+        },
+        {
+            "text": "power",
+            "start": 72.22,
+            "end": 72.42,
+            "pos": "NOUN"
+        },
+        {
+            "text": "to",
+            "start": 72.42,
+            "end": 72.62,
+            "pos": "PART"
+        },
+        {
+            "text": "better",
+            "start": 72.62,
+            "end": 72.92,
+            "pos": "ADJ"
+        },
+        {
+            "text": "people.",
+            "start": 72.92,
+            "end": 73.24,
+            "pos": "NOUN"
+        },
+        {
+            "text": "We",
+            "start": 73.32,
+            "end": 73.44,
+            "pos": "PRON"
+        },
+        {
+            "text": "want",
+            "start": 73.44,
+            "end": 73.58,
+            "pos": "VERB"
+        },
+        {
+            "text": "one",
+            "start": 73.58,
+            "end": 73.72,
+            "pos": "NUM"
+        },
+        {
+            "text": "better",
+            "start": 73.72,
+            "end": 74.0,
+            "pos": "ADJ"
+        },
+        {
+            "text": "for",
+            "start": 74.16,
+            "end": 74.26,
+            "pos": "ADP"
+        },
+        {
+            "text": "themselves.",
+            "start": 74.26,
+            "end": 74.52,
+            "pos": "PRON"
+        },
+        {
+            "text": "It's",
+            "start": 74.78,
+            "end": 74.94,
+            "pos": "PRON"
+        },
+        {
+            "text": "a",
+            "start": 74.94,
+            "end": 74.98,
+            "pos": "DET"
+        },
+        {
+            "text": "ninky",
+            "start": 74.98,
+            "end": 75.2,
+            "pos": "ADJ"
+        },
+        {
+            "text": "thing",
+            "start": 75.2,
+            "end": 75.38,
+            "pos": "NOUN"
+        },
+        {
+            "text": "to",
+            "start": 75.38,
+            "end": 75.52,
+            "pos": "PART"
+        },
+        {
+            "text": "choose.",
+            "start": 75.52,
+            "end": 75.68,
+            "pos": "VERB"
+        },
+        {
+            "text": "Like",
+            "start": 75.88,
+            "end": 75.98,
+            "pos": "ADP"
+        },
+        {
+            "text": "the",
+            "start": 75.98,
+            "end": 76.08,
+            "pos": "DET"
+        },
+        {
+            "text": "fact",
+            "start": 76.08,
+            "end": 76.22,
+            "pos": "NOUN"
+        },
+        {
+            "text": "that",
+            "start": 76.22,
+            "end": 76.38,
+            "pos": "SCONJ"
+        },
+        {
+            "text": "I",
+            "start": 76.38,
+            "end": 76.5,
+            "pos": "PRON"
+        },
+        {
+            "text": "don't",
+            "start": 76.5,
+            "end": 76.66,
+            "pos": "AUX"
+        },
+        {
+            "text": "get",
+            "start": 76.66,
+            "end": 76.8,
+            "pos": "VERB"
+        },
+        {
+            "text": "to",
+            "start": 76.8,
+            "end": 76.92,
+            "pos": "PART"
+        },
+        {
+            "text": "sell",
+            "start": 76.92,
+            "end": 77.06,
+            "pos": "VERB"
+        },
+        {
+            "text": "something",
+            "start": 77.06,
+            "end": 77.24,
+            "pos": "PRON"
+        },
+        {
+            "text": "better.",
+            "start": 77.24,
+            "end": 77.59,
+            "pos": "ADJ"
+        },
+        {
+            "text": "Me",
+            "start": 77.78,
+            "end": 77.84,
+            "pos": "PRON"
+        },
+        {
+            "text": "that's",
+            "start": 77.84,
+            "end": 78.1,
+            "pos": "PRON"
+        },
+        {
+            "text": "even",
+            "start": 78.1,
+            "end": 78.24,
+            "pos": "ADV"
+        },
+        {
+            "text": "exponential",
+            "start": 78.24,
+            "end": 78.6,
+            "pos": "ADJ"
+        },
+        {
+            "text": "sales.",
+            "start": 78.6,
+            "end": 79.02,
+            "pos": "NOUN"
+        },
+        {
+            "text": "Never",
+            "start": 79.38,
+            "end": 79.48,
+            "pos": "ADV"
+        },
+        {
+            "text": "have",
+            "start": 79.48,
+            "end": 79.62,
+            "pos": "VERB"
+        },
+        {
+            "text": "a",
+            "start": 79.62,
+            "end": 79.74,
+            "pos": "DET"
+        },
+        {
+            "text": "blended",
+            "start": 79.76,
+            "end": 79.94,
+            "pos": "ADJ"
+        },
+        {
+            "text": "day",
+            "start": 79.94,
+            "end": 80.14,
+            "pos": "NOUN"
+        },
+        {
+            "text": "to",
+            "start": 80.14,
+            "end": 80.26,
+            "pos": "PART"
+        },
+        {
+            "text": "do",
+            "start": 80.26,
+            "end": 80.38,
+            "pos": "VERB"
+        },
+        {
+            "text": "the",
+            "start": 80.38,
+            "end": 80.48,
+            "pos": "DET"
+        },
+        {
+            "text": "thing.",
+            "start": 80.48,
+            "end": 80.72,
+            "pos": "NOUN"
+        },
+        {
+            "text": "Send",
+            "start": 80.82,
+            "end": 80.94,
+            "pos": "VERB"
+        },
+        {
+            "text": "some",
+            "start": 80.94,
+            "end": 81.1,
+            "pos": "DET"
+        },
+        {
+            "text": "meat",
+            "start": 81.1,
+            "end": 81.26,
+            "pos": "NOUN"
+        },
+        {
+            "text": "and",
+            "start": 81.26,
+            "end": 81.4,
+            "pos": "CCONJ"
+        },
+        {
+            "text": "ninky",
+            "start": 81.4,
+            "end": 81.52,
+            "pos": "ADJ"
+        },
+        {
+            "text": "team.",
+            "start": 81.52,
+            "end": 81.8,
+            "pos": "NOUN"
+        },
+        {
+            "text": "But",
+            "start": 81.92,
+            "end": 81.94,
+            "pos": "CCONJ"
+        },
+        {
+            "text": "no,",
+            "start": 81.94,
+            "end": 82.06,
+            "pos": "INTJ"
+        },
+        {
+            "text": "it",
+            "start": 82.08,
+            "end": 82.2,
+            "pos": "PRON"
+        },
+        {
+            "text": "was",
+            "start": 82.2,
+            "end": 82.46,
+            "pos": "AUX"
+        },
+        {
+            "text": "dope.",
+            "start": 82.46,
+            "end": 82.62,
+            "pos": "NOUN"
+        },
+        {
+            "text": "You",
+            "start": 82.62,
+            "end": 82.72,
+            "pos": "PRON"
+        },
+        {
+            "text": "better",
+            "start": 82.72,
+            "end": 82.96,
+            "pos": "ADV"
+        },
+        {
+            "text": "get",
+            "start": 82.96,
+            "end": 83.12,
+            "pos": "VERB"
+        },
+        {
+            "text": "some",
+            "start": 83.12,
+            "end": 83.32,
+            "pos": "DET"
+        },
+        {
+            "text": "sales.",
+            "start": 83.32,
+            "end": 83.48,
+            "pos": "NOUN"
+        },
+        {
+            "text": "And",
+            "start": 83.8,
+            "end": 83.88,
+            "pos": "CCONJ"
+        },
+        {
+            "text": "all",
+            "start": 83.88,
+            "end": 83.98,
+            "pos": "DET"
+        },
+        {
+            "text": "the",
+            "start": 83.98,
+            "end": 84.1,
+            "pos": "DET"
+        },
+        {
+            "text": "stadiums.",
+            "start": 84.1,
+            "end": 84.4,
+            "pos": "NOUN"
+        },
+        {
+            "text": "If",
+            "start": 84.9,
+            "end": 84.9,
+            "pos": "SCONJ"
+        },
+        {
+            "text": "it",
+            "start": 84.9,
+            "end": 84.96,
+            "pos": "PRON"
+        },
+        {
+            "text": "means",
+            "start": 84.96,
+            "end": 85.14,
+            "pos": "VERB"
+        },
+        {
+            "text": "avoid",
+            "start": 85.14,
+            "end": 85.4,
+            "pos": "VERB"
+        },
+        {
+            "text": "a",
+            "start": 85.4,
+            "end": 85.56,
+            "pos": "DET"
+        },
+        {
+            "text": "name,",
+            "start": 85.56,
+            "end": 85.68,
+            "pos": "NOUN"
+        },
+        {
+            "text": "shame,",
+            "start": 85.84,
+            "end": 85.96,
+            "pos": "PUNCT"
+        },
+        {
+            "text": "shame,",
+            "start": 85.96,
+            "end": 86.06,
+            "pos": "NOUN"
+        },
+        {
+            "text": "shame.",
+            "start": 86.06,
+            "end": 86.14,
+            "pos": "NOUN"
+        },
+        {
+            "text": "Oh,",
+            "start": 86.3,
+            "end": 86.3,
+            "pos": "PUNCT"
+        },
+        {
+            "text": "well,",
+            "start": 86.42,
+            "end": 86.58,
+            "pos": "PUNCT"
+        },
+        {
+            "text": "shit.",
+            "start": 86.78,
+            "end": 86.94,
+            "pos": "NOUN"
+        },
+        {
+            "text": "It's",
+            "start": 87.02,
+            "end": 87.1,
+            "pos": "PRON"
+        },
+        {
+            "text": "whatever.",
+            "start": 87.1,
+            "end": 87.28,
+            "pos": "PRON"
+        },
+        {
+            "text": "I",
+            "start": 87.56,
+            "end": 87.62,
+            "pos": "PRON"
+        },
+        {
+            "text": "was",
+            "start": 87.62,
+            "end": 87.76,
+            "pos": "AUX"
+        },
+        {
+            "text": "real.",
+            "start": 87.76,
+            "end": 87.94,
+            "pos": "ADJ"
+        },
+        {
+            "text": "You",
+            "start": 88.1,
+            "end": 88.18,
+            "pos": "PRON"
+        },
+        {
+            "text": "just",
+            "start": 88.18,
+            "end": 88.34,
+            "pos": "ADV"
+        },
+        {
+            "text": "soak",
+            "start": 88.34,
+            "end": 88.5,
+            "pos": "VERB"
+        },
+        {
+            "text": "it",
+            "start": 88.5,
+            "end": 88.66,
+            "pos": "PRON"
+        },
+        {
+            "text": "in.",
+            "start": 88.66,
+            "end": 88.8,
+            "pos": "ADP"
+        },
+        {
+            "text": "You",
+            "start": 92.15,
+            "end": 92.6,
+            "pos": "PRON"
+        },
+        {
+            "text": "just",
+            "start": 92.6,
+            "end": 92.74,
+            "pos": "ADV"
+        },
+        {
+            "text": "soak",
+            "start": 92.74,
+            "end": 92.94,
+            "pos": "VERB"
+        },
+        {
+            "text": "it",
+            "start": 92.94,
+            "end": 93.1,
+            "pos": "PRON"
+        },
+        {
+            "text": "in.",
+            "start": 93.1,
+            "end": 93.3,
+            "pos": "ADP"
+        },
+        {
+            "text": "You",
+            "start": 96.54,
+            "end": 97.04,
+            "pos": "PRON"
+        },
+        {
+            "text": "just",
+            "start": 97.04,
+            "end": 97.18,
+            "pos": "ADV"
+        },
+        {
+            "text": "soak",
+            "start": 97.18,
+            "end": 97.36,
+            "pos": "VERB"
+        },
+        {
+            "text": "it",
+            "start": 97.36,
+            "end": 97.56,
+            "pos": "PRON"
+        },
+        {
+            "text": "in.",
+            "start": 97.56,
+            "end": 97.76,
+            "pos": "ADP"
+        },
+        {
+            "text": "You",
+            "start": 101.2,
+            "end": 101.5,
+            "pos": "PRON"
+        },
+        {
+            "text": "just",
+            "start": 101.5,
+            "end": 101.62,
+            "pos": "ADV"
+        },
+        {
+            "text": "soak",
+            "start": 101.62,
+            "end": 101.8,
+            "pos": "VERB"
+        },
+        {
+            "text": "it",
+            "start": 101.8,
+            "end": 101.84,
+            "pos": "PRON"
+        },
+        {
+            "text": "in.",
+            "start": 101.84,
+            "end": 101.84,
+            "pos": "ADP"
+        },
+        {
+            "text": "You",
+            "start": 101.84,
+            "end": 101.84,
+            "pos": "PRON"
+        },
+        {
+            "text": "just",
+            "start": 101.84,
+            "end": 101.84,
+            "pos": "ADV"
+        },
+        {
+            "text": "soak",
+            "start": 101.84,
+            "end": 101.84,
+            "pos": "VERB"
+        },
+        {
+            "text": "it",
+            "start": 101.84,
+            "end": 102.0,
+            "pos": "PRON"
+        },
+        {
+            "text": "in.",
+            "start": 102.0,
+            "end": 102.22,
+            "pos": "ADP"
+        },
+        {
+            "text": "I've",
+            "start": 106.16,
+            "end": 106.46,
+            "pos": "PRON"
+        },
+        {
+            "text": "been",
+            "start": 106.46,
+            "end": 106.54,
+            "pos": "AUX"
+        },
+        {
+            "text": "at",
+            "start": 106.68,
+            "end": 106.78,
+            "pos": "ADP"
+        },
+        {
+            "text": "rock",
+            "start": 106.78,
+            "end": 107.12,
+            "pos": "NOUN"
+        },
+        {
+            "text": "bottom",
+            "start": 107.12,
+            "end": 107.57,
+            "pos": "NOUN"
+        },
+        {
+            "text": "with",
+            "start": 107.6,
+            "end": 107.82,
+            "pos": "ADP"
+        },
+        {
+            "text": "no",
+            "start": 107.82,
+            "end": 108.0,
+            "pos": "DET"
+        },
+        {
+            "text": "water,",
+            "start": 108.0,
+            "end": 108.36,
+            "pos": "NOUN"
+        },
+        {
+            "text": "trying",
+            "start": 108.58,
+            "end": 108.78,
+            "pos": "VERB"
+        },
+        {
+            "text": "to",
+            "start": 108.78,
+            "end": 108.9,
+            "pos": "PART"
+        },
+        {
+            "text": "live",
+            "start": 108.9,
+            "end": 109.08,
+            "pos": "VERB"
+        },
+        {
+            "text": "a",
+            "start": 109.08,
+            "end": 109.16,
+            "pos": "PRON"
+        },
+        {
+            "text": "like",
+            "start": 109.16,
+            "end": 109.34,
+            "pos": "ADP"
+        },
+        {
+            "text": "a",
+            "start": 109.34,
+            "end": 109.48,
+            "pos": "DET"
+        },
+        {
+            "text": "piece,",
+            "start": 109.48,
+            "end": 109.68,
+            "pos": "NOUN"
+        },
+        {
+            "text": "just",
+            "start": 109.8,
+            "end": 109.92,
+            "pos": "ADV"
+        },
+        {
+            "text": "a",
+            "start": 109.92,
+            "end": 110.04,
+            "pos": "DET"
+        },
+        {
+            "text": "grown.",
+            "start": 110.04,
+            "end": 110.22,
+            "pos": "NOUN"
+        },
+        {
+            "text": "Matter",
+            "start": 110.42,
+            "end": 110.6,
+            "pos": "PROPN"
+        },
+        {
+            "text": "got",
+            "start": 110.6,
+            "end": 110.98,
+            "pos": "VERB"
+        },
+        {
+            "text": "the",
+            "start": 110.98,
+            "end": 111.16,
+            "pos": "DET"
+        },
+        {
+            "text": "perfect",
+            "start": 111.16,
+            "end": 111.62,
+            "pos": "ADJ"
+        },
+        {
+            "text": "pitch.",
+            "start": 111.62,
+            "end": 111.9,
+            "pos": "NOUN"
+        },
+        {
+            "text": "There's",
+            "start": 112.16,
+            "end": 112.28,
+            "pos": "PRON"
+        },
+        {
+            "text": "no",
+            "start": 112.28,
+            "end": 112.42,
+            "pos": "DET"
+        },
+        {
+            "text": "Bad",
+            "start": 112.56,
+            "end": 112.74,
+            "pos": "ADJ"
+        },
+        {
+            "text": "but",
+            "start": 112.74,
+            "end": 113.02,
+            "pos": "CCONJ"
+        },
+        {
+            "text": "with",
+            "start": 113.02,
+            "end": 113.22,
+            "pos": "ADP"
+        },
+        {
+            "text": "just",
+            "start": 113.22,
+            "end": 113.38,
+            "pos": "ADV"
+        },
+        {
+            "text": "nobody",
+            "start": 113.38,
+            "end": 113.74,
+            "pos": "PRON"
+        },
+        {
+            "text": "else.",
+            "start": 113.74,
+            "end": 114.12,
+            "pos": "ADV"
+        },
+        {
+            "text": "There's",
+            "start": 114.34,
+            "end": 114.38,
+            "pos": "PRON"
+        },
+        {
+            "text": "a",
+            "start": 114.38,
+            "end": 114.46,
+            "pos": "DET"
+        },
+        {
+            "text": "new",
+            "start": 114.46,
+            "end": 114.58,
+            "pos": "ADJ"
+        },
+        {
+            "text": "pack",
+            "start": 114.58,
+            "end": 114.92,
+            "pos": "NOUN"
+        },
+        {
+            "text": "of",
+            "start": 114.92,
+            "end": 115.18,
+            "pos": "ADP"
+        },
+        {
+            "text": "a",
+            "start": 115.18,
+            "end": 115.28,
+            "pos": "DET"
+        },
+        {
+            "text": "mic.",
+            "start": 115.28,
+            "end": 115.38,
+            "pos": "NOUN"
+        },
+        {
+            "text": "Yeah,",
+            "start": 115.92,
+            "end": 116.02,
+            "pos": "INTJ"
+        },
+        {
+            "text": "so",
+            "start": 116.44,
+            "end": 116.66,
+            "pos": "ADV"
+        },
+        {
+            "text": "won't",
+            "start": 116.66,
+            "end": 116.98,
+            "pos": "AUX"
+        },
+        {
+            "text": "wrap",
+            "start": 116.98,
+            "end": 117.16,
+            "pos": "VERB"
+        },
+        {
+            "text": "the",
+            "start": 117.16,
+            "end": 117.42,
+            "pos": "DET"
+        },
+        {
+            "text": "mind",
+            "start": 117.42,
+            "end": 117.72,
+            "pos": "NOUN"
+        },
+        {
+            "text": "Those",
+            "start": 117.72,
+            "end": 118.08,
+            "pos": "PRON"
+        },
+        {
+            "text": "I",
+            "start": 118.08,
+            "end": 118.2,
+            "pos": "PRON"
+        },
+        {
+            "text": "be",
+            "start": 118.2,
+            "end": 118.32,
+            "pos": "VERB"
+        },
+        {
+            "text": "G.",
+            "start": 118.32,
+            "end": 118.48,
+            "pos": "PROPN"
+        },
+        {
+            "text": "G",
+            "start": 118.58,
+            "end": 118.66,
+            "pos": "PROPN"
+        },
+        {
+            "text": "waves",
+            "start": 118.66,
+            "end": 118.86,
+            "pos": "NOUN"
+        },
+        {
+            "text": "don't",
+            "start": 118.86,
+            "end": 119.18,
+            "pos": "AUX"
+        },
+        {
+            "text": "man",
+            "start": 119.2,
+            "end": 119.34,
+            "pos": "NOUN"
+        },
+        {
+            "text": "get",
+            "start": 119.34,
+            "end": 119.58,
+            "pos": "VERB"
+        },
+        {
+            "text": "in",
+            "start": 119.58,
+            "end": 119.72,
+            "pos": "ADP"
+        },
+        {
+            "text": "line.",
+            "start": 119.72,
+            "end": 119.9,
+            "pos": "NOUN"
+        },
+        {
+            "text": "Yeah,",
+            "start": 120.36,
+            "end": 120.5,
+            "pos": "INTJ"
+        },
+        {
+            "text": "and",
+            "start": 120.8,
+            "end": 120.9,
+            "pos": "CCONJ"
+        },
+        {
+            "text": "no",
+            "start": 120.9,
+            "end": 121.02,
+            "pos": "INTJ"
+        },
+        {
+            "text": "the",
+            "start": 121.02,
+            "end": 121.14,
+            "pos": "DET"
+        },
+        {
+            "text": "dope",
+            "start": 121.14,
+            "end": 121.36,
+            "pos": "NOUN"
+        },
+        {
+            "text": "man",
+            "start": 121.36,
+            "end": 121.6,
+            "pos": "NOUN"
+        },
+        {
+            "text": "get",
+            "start": 121.6,
+            "end": 121.82,
+            "pos": "VERB"
+        },
+        {
+            "text": "a",
+            "start": 121.82,
+            "end": 121.96,
+            "pos": "DET"
+        },
+        {
+            "text": "line",
+            "start": 121.96,
+            "end": 122.2,
+            "pos": "NOUN"
+        },
+        {
+            "text": "When",
+            "start": 122.2,
+            "end": 122.64,
+            "pos": "SCONJ"
+        },
+        {
+            "text": "I",
+            "start": 122.64,
+            "end": 122.74,
+            "pos": "PRON"
+        },
+        {
+            "text": "scope",
+            "start": 122.74,
+            "end": 122.92,
+            "pos": "VERB"
+        },
+        {
+            "text": "man,",
+            "start": 122.92,
+            "end": 123.26,
+            "pos": "NOUN"
+        },
+        {
+            "text": "you",
+            "start": 123.46,
+            "end": 123.74,
+            "pos": "PRON"
+        },
+        {
+            "text": "could",
+            "start": 123.74,
+            "end": 123.86,
+            "pos": "AUX"
+        },
+        {
+            "text": "get",
+            "start": 123.86,
+            "end": 124.06,
+            "pos": "VERB"
+        },
+        {
+            "text": "a",
+            "start": 124.06,
+            "end": 124.18,
+            "pos": "DET"
+        },
+        {
+            "text": "mind",
+            "start": 124.18,
+            "end": 124.36,
+            "pos": "NOUN"
+        },
+        {
+            "text": "don't",
+            "start": 124.36,
+            "end": 124.62,
+            "pos": "AUX"
+        },
+        {
+            "text": "you",
+            "start": 124.62,
+            "end": 124.72,
+            "pos": "PRON"
+        },
+        {
+            "text": "get",
+            "start": 124.72,
+            "end": 124.92,
+            "pos": "VERB"
+        },
+        {
+            "text": "it?",
+            "start": 124.92,
+            "end": 125.02,
+            "pos": "PRON"
+        },
+        {
+            "text": "I'm",
+            "start": 125.16,
+            "end": 125.26,
+            "pos": "PRON"
+        },
+        {
+            "text": "supposed",
+            "start": 125.26,
+            "end": 125.44,
+            "pos": "VERB"
+        },
+        {
+            "text": "to",
+            "start": 125.44,
+            "end": 125.58,
+            "pos": "PART"
+        },
+        {
+            "text": "miss",
+            "start": 125.58,
+            "end": 125.76,
+            "pos": "VERB"
+        },
+        {
+            "text": "the",
+            "start": 125.76,
+            "end": 125.9,
+            "pos": "DET"
+        },
+        {
+            "text": "vice",
+            "start": 125.94,
+            "end": 126.06,
+            "pos": "NOUN"
+        },
+        {
+            "text": "-presipized",
+            "start": 126.06,
+            "end": 126.64,
+            "pos": "ADJ"
+        },
+        {
+            "text": "only",
+            "start": 126.64,
+            "end": 126.88,
+            "pos": "ADJ"
+        },
+        {
+            "text": "mission",
+            "start": 126.88,
+            "end": 127.2,
+            "pos": "NOUN"
+        },
+        {
+            "text": "I've",
+            "start": 127.42,
+            "end": 127.54,
+            "pos": "PRON"
+        },
+        {
+            "text": "given",
+            "start": 127.56,
+            "end": 127.68,
+            "pos": "VERB"
+        },
+        {
+            "text": "a",
+            "start": 127.68,
+            "end": 127.8,
+            "pos": "DET"
+        },
+        {
+            "text": "shit",
+            "start": 127.8,
+            "end": 127.88,
+            "pos": "NOUN"
+        },
+        {
+            "text": "to",
+            "start": 127.88,
+            "end": 128.04,
+            "pos": "PART"
+        },
+        {
+            "text": "try",
+            "start": 128.04,
+            "end": 128.26,
+            "pos": "VERB"
+        },
+        {
+            "text": "and",
+            "start": 128.26,
+            "end": 128.46,
+            "pos": "CCONJ"
+        },
+        {
+            "text": "my",
+            "start": 128.46,
+            "end": 128.6,
+            "pos": "PRON"
+        },
+        {
+            "text": "life",
+            "start": 128.6,
+            "end": 128.76,
+            "pos": "NOUN"
+        },
+        {
+            "text": "if",
+            "start": 128.76,
+            "end": 129.04,
+            "pos": "SCONJ"
+        },
+        {
+            "text": "I",
+            "start": 129.04,
+            "end": 129.16,
+            "pos": "PRON"
+        },
+        {
+            "text": "didn't",
+            "start": 129.16,
+            "end": 129.44,
+            "pos": "AUX"
+        },
+        {
+            "text": "have",
+            "start": 129.44,
+            "end": 129.6,
+            "pos": "VERB"
+        },
+        {
+            "text": "the",
+            "start": 129.6,
+            "end": 129.72,
+            "pos": "DET"
+        },
+        {
+            "text": "spit",
+            "start": 129.72,
+            "end": 129.88,
+            "pos": "NOUN"
+        },
+        {
+            "text": "and",
+            "start": 129.88,
+            "end": 130.02,
+            "pos": "CCONJ"
+        },
+        {
+            "text": "sit",
+            "start": 130.02,
+            "end": 130.14,
+            "pos": "VERB"
+        },
+        {
+            "text": "out",
+            "start": 130.14,
+            "end": 130.28,
+            "pos": "ADP"
+        },
+        {
+            "text": "in",
+            "start": 130.28,
+            "end": 130.42,
+            "pos": "ADP"
+        },
+        {
+            "text": "my",
+            "start": 130.42,
+            "end": 130.56,
+            "pos": "PRON"
+        },
+        {
+            "text": "freaking",
+            "start": 130.62,
+            "end": 130.78,
+            "pos": "VERB"
+        },
+        {
+            "text": "life",
+            "start": 130.78,
+            "end": 130.98,
+            "pos": "NOUN"
+        },
+        {
+            "text": "But",
+            "start": 131.04,
+            "end": 131.14,
+            "pos": "CCONJ"
+        },
+        {
+            "text": "look",
+            "start": 131.14,
+            "end": 131.36,
+            "pos": "VERB"
+        },
+        {
+            "text": "and",
+            "start": 131.36,
+            "end": 131.46,
+            "pos": "CCONJ"
+        },
+        {
+            "text": "all",
+            "start": 131.46,
+            "end": 131.54,
+            "pos": "DET"
+        },
+        {
+            "text": "these",
+            "start": 131.54,
+            "end": 131.7,
+            "pos": "DET"
+        },
+        {
+            "text": "wrongs",
+            "start": 131.7,
+            "end": 132.04,
+            "pos": "NOUN"
+        },
+        {
+            "text": "that",
+            "start": 132.04,
+            "end": 132.1,
+            "pos": "PRON"
+        },
+        {
+            "text": "don't",
+            "start": 132.1,
+            "end": 132.3,
+            "pos": "AUX"
+        },
+        {
+            "text": "wait",
+            "start": 132.3,
+            "end": 132.4,
+            "pos": "VERB"
+        },
+        {
+            "text": "until",
+            "start": 132.4,
+            "end": 132.66,
+            "pos": "ADP"
+        },
+        {
+            "text": "the",
+            "start": 132.66,
+            "end": 132.8,
+            "pos": "DET"
+        },
+        {
+            "text": "end",
+            "start": 132.8,
+            "end": 132.96,
+            "pos": "NOUN"
+        },
+        {
+            "text": "it's",
+            "start": 132.96,
+            "end": 133.18,
+            "pos": "PRON"
+        },
+        {
+            "text": "a",
+            "start": 133.18,
+            "end": 133.22,
+            "pos": "DET"
+        },
+        {
+            "text": "positive",
+            "start": 133.22,
+            "end": 133.72,
+            "pos": "ADJ"
+        },
+        {
+            "text": "vibes",
+            "start": 133.72,
+            "end": 134.08,
+            "pos": "NOUN"
+        },
+        {
+            "text": "only",
+            "start": 134.08,
+            "end": 134.54,
+            "pos": "ADV"
+        },
+        {
+            "text": "don't",
+            "start": 134.54,
+            "end": 134.9,
+            "pos": "AUX"
+        },
+        {
+            "text": "be",
+            "start": 134.9,
+            "end": 135.0,
+            "pos": "AUX"
+        },
+        {
+            "text": "lost",
+            "start": 135.0,
+            "end": 135.28,
+            "pos": "VERB"
+        },
+        {
+            "text": "for",
+            "start": 135.28,
+            "end": 135.44,
+            "pos": "ADP"
+        },
+        {
+            "text": "them",
+            "start": 135.44,
+            "end": 135.54,
+            "pos": "PRON"
+        },
+        {
+            "text": "blind",
+            "start": 135.54,
+            "end": 135.78,
+            "pos": "ADJ"
+        },
+        {
+            "text": "It's",
+            "start": 136.06,
+            "end": 136.18,
+            "pos": "PRON"
+        },
+        {
+            "text": "obviously",
+            "start": 136.18,
+            "end": 136.48,
+            "pos": "ADV"
+        },
+        {
+            "text": "been",
+            "start": 136.5,
+            "end": 136.68,
+            "pos": "AUX"
+        },
+        {
+            "text": "crossed",
+            "start": 136.68,
+            "end": 136.9,
+            "pos": "VERB"
+        },
+        {
+            "text": "in",
+            "start": 136.9,
+            "end": 137.12,
+            "pos": "ADP"
+        },
+        {
+            "text": "your",
+            "start": 137.12,
+            "end": 137.2,
+            "pos": "PRON"
+        },
+        {
+            "text": "mind",
+            "start": 137.2,
+            "end": 137.42,
+            "pos": "NOUN"
+        },
+        {
+            "text": "to",
+            "start": 137.42,
+            "end": 137.62,
+            "pos": "PART"
+        },
+        {
+            "text": "find",
+            "start": 137.62,
+            "end": 137.82,
+            "pos": "VERB"
+        },
+        {
+            "text": "water",
+            "start": 137.82,
+            "end": 138.14,
+            "pos": "NOUN"
+        },
+        {
+            "text": "by",
+            "start": 138.14,
+            "end": 138.32,
+            "pos": "ADP"
+        },
+        {
+            "text": "drop",
+            "start": 138.32,
+            "end": 138.48,
+            "pos": "NOUN"
+        },
+        {
+            "text": "rows",
+            "start": 138.48,
+            "end": 138.7,
+            "pos": "NOUN"
+        },
+        {
+            "text": "I",
+            "start": 138.7,
+            "end": 138.88,
+            "pos": "PRON"
+        },
+        {
+            "text": "thought",
+            "start": 138.88,
+            "end": 139.08,
+            "pos": "VERB"
+        },
+        {
+            "text": "you",
+            "start": 139.08,
+            "end": 139.28,
+            "pos": "PRON"
+        },
+        {
+            "text": "were",
+            "start": 139.28,
+            "end": 139.38,
+            "pos": "AUX"
+        },
+        {
+            "text": "blind",
+            "start": 139.38,
+            "end": 139.66,
+            "pos": "ADJ"
+        },
+        {
+            "text": "but",
+            "start": 139.66,
+            "end": 139.82,
+            "pos": "CCONJ"
+        },
+        {
+            "text": "drawn",
+            "start": 139.82,
+            "end": 140.04,
+            "pos": "VERB"
+        },
+        {
+            "text": "not",
+            "start": 140.04,
+            "end": 140.26,
+            "pos": "PART"
+        },
+        {
+            "text": "this",
+            "start": 140.26,
+            "end": 140.44,
+            "pos": "DET"
+        },
+        {
+            "text": "horse's",
+            "start": 140.44,
+            "end": 140.72,
+            "pos": "NOUN"
+        },
+        {
+            "text": "the",
+            "start": 140.72,
+            "end": 140.78,
+            "pos": "DET"
+        },
+        {
+            "text": "strings",
+            "start": 140.78,
+            "end": 141.0,
+            "pos": "NOUN"
+        },
+        {
+            "text": "is",
+            "start": 141.0,
+            "end": 141.18,
+            "pos": "AUX"
+        },
+        {
+            "text": "pointless",
+            "start": 141.18,
+            "end": 141.46,
+            "pos": "ADJ"
+        },
+        {
+            "text": "to",
+            "start": 141.46,
+            "end": 141.68,
+            "pos": "PART"
+        },
+        {
+            "text": "try",
+            "start": 141.68,
+            "end": 141.88,
+            "pos": "VERB"
+        },
+        {
+            "text": "sir",
+            "start": 141.88,
+            "end": 142.06,
+            "pos": "NOUN"
+        },
+        {
+            "text": "Do",
+            "start": 142.38,
+            "end": 142.48,
+            "pos": "AUX"
+        },
+        {
+            "text": "like",
+            "start": 142.48,
+            "end": 142.74,
+            "pos": "ADP"
+        },
+        {
+            "text": "Royce",
+            "start": 142.74,
+            "end": 143.12,
+            "pos": "PROPN"
+        },
+        {
+            "text": "and",
+            "start": 143.14,
+            "end": 143.24,
+            "pos": "CCONJ"
+        },
+        {
+            "text": "this",
+            "start": 143.24,
+            "end": 143.34,
+            "pos": "DET"
+        },
+        {
+            "text": "prime",
+            "start": 143.34,
+            "end": 143.54,
+            "pos": "ADJ"
+        },
+        {
+            "text": "sir",
+            "start": 143.54,
+            "end": 143.82,
+            "pos": "NOUN"
+        },
+        {
+            "text": "and",
+            "start": 143.82,
+            "end": 144.18,
+            "pos": "CCONJ"
+        },
+        {
+            "text": "not",
+            "start": 144.18,
+            "end": 144.32,
+            "pos": "PART"
+        },
+        {
+            "text": "like",
+            "start": 144.32,
+            "end": 144.44,
+            "pos": "INTJ"
+        },
+        {
+            "text": "peak",
+            "start": 144.44,
+            "end": 144.66,
+            "pos": "NOUN"
+        },
+        {
+            "text": "like",
+            "start": 144.66,
+            "end": 144.88,
+            "pos": "ADP"
+        },
+        {
+            "text": "the",
+            "start": 144.92,
+            "end": 145.02,
+            "pos": "DET"
+        },
+        {
+            "text": "hoodie",
+            "start": 145.02,
+            "end": 145.24,
+            "pos": "NOUN"
+        },
+        {
+            "text": "from",
+            "start": 145.24,
+            "end": 145.46,
+            "pos": "ADP"
+        },
+        {
+            "text": "the",
+            "start": 145.46,
+            "end": 145.58,
+            "pos": "DET"
+        },
+        {
+            "text": "cipher",
+            "start": 145.58,
+            "end": 145.92,
+            "pos": "PROPN"
+        },
+        {
+            "text": "in",
+            "start": 146.24,
+            "end": 146.36,
+            "pos": "ADP"
+        },
+        {
+            "text": "war",
+            "start": 146.36,
+            "end": 146.58,
+            "pos": "NOUN"
+        },
+        {
+            "text": "taking",
+            "start": 146.58,
+            "end": 146.92,
+            "pos": "VERB"
+        },
+        {
+            "text": "other",
+            "start": 146.92,
+            "end": 147.14,
+            "pos": "ADJ"
+        },
+        {
+            "text": "facts",
+            "start": 147.14,
+            "end": 147.4,
+            "pos": "NOUN"
+        },
+        {
+            "text": "and",
+            "start": 147.4,
+            "end": 147.58,
+            "pos": "CCONJ"
+        },
+        {
+            "text": "making",
+            "start": 147.58,
+            "end": 147.72,
+            "pos": "VERB"
+        },
+        {
+            "text": "an",
+            "start": 147.72,
+            "end": 147.86,
+            "pos": "DET"
+        },
+        {
+            "text": "imp",
+            "start": 147.86,
+            "end": 148.0,
+            "pos": "NOUN"
+        },
+        {
+            "text": "for",
+            "start": 148.0,
+            "end": 148.2,
+            "pos": "SCONJ"
+        },
+        {
+            "text": "it's",
+            "start": 148.2,
+            "end": 148.44,
+            "pos": "PRON"
+        },
+        {
+            "text": "all",
+            "start": 148.44,
+            "end": 148.54,
+            "pos": "PRON"
+        },
+        {
+            "text": "mean",
+            "start": 148.54,
+            "end": 148.78,
+            "pos": "VERB"
+        },
+        {
+            "text": "been",
+            "start": 148.78,
+            "end": 149.16,
+            "pos": "AUX"
+        },
+        {
+            "text": "ready",
+            "start": 149.16,
+            "end": 149.36,
+            "pos": "ADJ"
+        },
+        {
+            "text": "to",
+            "start": 149.36,
+            "end": 149.5,
+            "pos": "PART"
+        },
+        {
+            "text": "show",
+            "start": 149.5,
+            "end": 149.6,
+            "pos": "VERB"
+        },
+        {
+            "text": "the",
+            "start": 149.6,
+            "end": 149.72,
+            "pos": "DET"
+        },
+        {
+            "text": "whole",
+            "start": 149.72,
+            "end": 149.92,
+            "pos": "ADJ"
+        },
+        {
+            "text": "world",
+            "start": 149.92,
+            "end": 150.24,
+            "pos": "NOUN"
+        },
+        {
+            "text": "what",
+            "start": 150.24,
+            "end": 150.46,
+            "pos": "PRON"
+        },
+        {
+            "text": "they're",
+            "start": 150.46,
+            "end": 150.6,
+            "pos": "PRON"
+        },
+        {
+            "text": "in",
+            "start": 150.6,
+            "end": 150.78,
+            "pos": "ADP"
+        },
+        {
+            "text": "for",
+            "start": 150.78,
+            "end": 151.0,
+            "pos": "ADP"
+        },
+        {
+            "text": "no",
+            "start": 151.0,
+            "end": 151.26,
+            "pos": "PRON"
+        },
+        {
+            "text": "more",
+            "start": 151.26,
+            "end": 151.42,
+            "pos": "ADV"
+        },
+        {
+            "text": "doubt",
+            "start": 151.42,
+            "end": 151.58,
+            "pos": "ADJ"
+        },
+        {
+            "text": "no",
+            "start": 151.58,
+            "end": 151.88,
+            "pos": "DET"
+        },
+        {
+            "text": "hesitation",
+            "start": 151.88,
+            "end": 152.24,
+            "pos": "NOUN"
+        },
+        {
+            "text": "no",
+            "start": 152.24,
+            "end": 152.68,
+            "pos": "PRON"
+        },
+        {
+            "text": "more",
+            "start": 152.68,
+            "end": 152.8,
+            "pos": "ADJ"
+        },
+        {
+            "text": "limitations",
+            "start": 152.8,
+            "end": 153.14,
+            "pos": "NOUN"
+        },
+        {
+            "text": "down",
+            "start": 153.14,
+            "end": 153.56,
+            "pos": "ADV"
+        },
+        {
+            "text": "and",
+            "start": 153.56,
+            "end": 153.7,
+            "pos": "CCONJ"
+        },
+        {
+            "text": "so",
+            "start": 153.7,
+            "end": 153.98,
+            "pos": "ADV"
+        },
+        {
+            "text": "we're",
+            "start": 153.98,
+            "end": 154.26,
+            "pos": "PRON"
+        },
+        {
+            "text": "elevated",
+            "start": 154.26,
+            "end": 154.66,
+            "pos": "VERB"
+        },
+        {
+            "text": "in",
+            "start": 154.66,
+            "end": 154.92,
+            "pos": "ADP"
+        },
+        {
+            "text": "our",
+            "start": 154.92,
+            "end": 155.02,
+            "pos": "PRON"
+        },
+        {
+            "text": "ministry",
+            "start": 155.02,
+            "end": 155.38,
+            "pos": "NOUN"
+        },
+        {
+            "text": "There's",
+            "start": 155.38,
+            "end": 155.62,
+            "pos": "PRON"
+        },
+        {
+            "text": "no",
+            "start": 155.62,
+            "end": 155.72,
+            "pos": "DET"
+        },
+        {
+            "text": "more",
+            "start": 155.72,
+            "end": 155.86,
+            "pos": "ADV"
+        },
+        {
+            "text": "downward",
+            "start": 155.86,
+            "end": 156.06,
+            "pos": "ADJ"
+        },
+        {
+            "text": "thing",
+            "start": 156.06,
+            "end": 156.26,
+            "pos": "NOUN"
+        },
+        {
+            "text": "can",
+            "start": 156.26,
+            "end": 156.4,
+            "pos": "AUX"
+        },
+        {
+            "text": "feel",
+            "start": 156.4,
+            "end": 156.56,
+            "pos": "VERB"
+        },
+        {
+            "text": "that",
+            "start": 156.56,
+            "end": 156.66,
+            "pos": "SCONJ"
+        },
+        {
+            "text": "escalated",
+            "start": 156.66,
+            "end": 157.14,
+            "pos": "VERB"
+        },
+        {
+            "text": "demonstrate",
+            "start": 157.14,
+            "end": 157.52,
+            "pos": "VERB"
+        },
+        {
+            "text": "no",
+            "start": 157.52,
+            "end": 157.76,
+            "pos": "DET"
+        },
+        {
+            "text": "boundaries",
+            "start": 157.76,
+            "end": 158.02,
+            "pos": "NOUN"
+        },
+        {
+            "text": "now",
+            "start": 158.02,
+            "end": 158.24,
+            "pos": "ADV"
+        },
+        {
+            "text": "so",
+            "start": 158.24,
+            "end": 158.5,
+            "pos": "ADV"
+        },
+        {
+            "text": "I'm",
+            "start": 158.5,
+            "end": 158.64,
+            "pos": "PRON"
+        },
+        {
+            "text": "celebrating",
+            "start": 158.64,
+            "end": 159.0,
+            "pos": "VERB"
+        },
+        {
+            "text": "an",
+            "start": 159.0,
+            "end": 159.28,
+            "pos": "DET"
+        },
+        {
+            "text": "average",
+            "start": 159.28,
+            "end": 159.46,
+            "pos": "ADJ"
+        },
+        {
+            "text": "simulation",
+            "start": 159.46,
+            "end": 159.82,
+            "pos": "NOUN"
+        },
+        {
+            "text": "you",
+            "start": 159.82,
+            "end": 160.4,
+            "pos": "PRON"
+        },
+        {
+            "text": "just",
+            "start": 160.4,
+            "end": 160.54,
+            "pos": "ADV"
+        },
+        {
+            "text": "so",
+            "start": 160.54,
+            "end": 160.72,
+            "pos": "ADV"
+        },
+        {
+            "text": "could",
+            "start": 160.72,
+            "end": 160.88,
+            "pos": "AUX"
+        },
+        {
+            "text": "you",
+            "start": 160.88,
+            "end": 161.04,
+            "pos": "PRON"
+        },
+        {
+            "text": "you",
+            "start": 161.04,
+            "end": 162.62,
+            "pos": "PRON"
+        },
+        {
+            "text": "just",
+            "start": 162.62,
+            "end": 162.8,
+            "pos": "ADV"
+        },
+        {
+            "text": "so",
+            "start": 162.8,
+            "end": 163.02,
+            "pos": "ADV"
+        },
+        {
+            "text": "could",
+            "start": 163.02,
+            "end": 163.16,
+            "pos": "AUX"
+        },
+        {
+            "text": "then",
+            "start": 163.16,
+            "end": 163.38,
+            "pos": "ADV"
+        },
+        {
+            "text": "you",
+            "start": 172.12,
+            "end": 172.22,
+            "pos": "PRON"
+        }
+    ],
+    "beats": [
+        17.833,
+        18.39,
+        18.947,
+        19.505,
+        20.062,
+        20.619,
+        21.177,
+        21.734,
+        22.291,
+        22.848,
+        23.382,
+        23.963,
+        24.52,
+        25.078,
+        25.612,
+        26.192,
+        26.749,
+        27.283,
+        27.841,
+        28.398,
+        28.955,
+        29.513,
+        30.07,
+        30.627,
+        31.184,
+        31.742,
+        32.276,
+        32.833,
+        33.39,
+        33.948,
+        34.505,
+        35.062,
+        35.619,
+        36.177,
+        36.734,
+        37.291,
+        37.849,
+        38.406,
+        38.94,
+        39.52,
+        40.054,
+        40.612,
+        41.169,
+        41.749,
+        42.284,
+        42.841,
+        43.398,
+        43.955,
+        44.513,
+        45.07,
+        45.627,
+        46.184,
+        46.742,
+        47.299,
+        47.833,
+        48.39,
+        48.948,
+        49.505,
+        50.062,
+        50.62,
+        51.177,
+        51.734,
+        52.291,
+        52.849,
+        53.383,
+        53.94,
+        54.497,
+        55.078,
+        55.635,
+        56.192,
+        56.726,
+        57.307,
+        57.841,
+        58.421,
+        58.955,
+        59.513,
+        60.07,
+        60.627,
+        61.185,
+        61.719,
+        62.276,
+        62.856,
+        63.39,
+        63.971,
+        64.528,
+        65.062,
+        65.62,
+        66.177,
+        66.734,
+        67.291,
+        67.825,
+        68.406,
+        68.963,
+        69.521,
+        70.078,
+        70.612,
+        71.169,
+        71.726,
+        72.284,
+        72.841,
+        73.398,
+        73.979,
+        74.513,
+        75.07,
+        75.627,
+        76.161,
+        76.719,
+        77.299,
+        77.857,
+        78.414,
+        78.948,
+        79.505,
+        80.086,
+        80.62,
+        81.177,
+        81.734,
+        82.292,
+        82.849,
+        83.383,
+        83.963,
+        84.521,
+        85.078,
+        85.612,
+        86.192,
+        86.75,
+        87.307,
+        87.864,
+        88.422,
+        88.979,
+        89.536,
+        90.093,
+        90.651,
+        91.208,
+        91.742,
+        92.299,
+        92.857,
+        93.414,
+        93.971,
+        94.528,
+        95.086,
+        95.643,
+        96.2,
+        96.758,
+        97.315,
+        97.872,
+        98.406,
+        98.963,
+        99.521,
+        100.078,
+        100.635,
+        101.193,
+        101.75,
+        102.307,
+        102.864,
+        103.422,
+        103.979,
+        104.513,
+        105.07,
+        105.628,
+        106.185,
+        106.742,
+        107.299,
+        107.833,
+        108.414,
+        108.971,
+        109.529,
+        110.063,
+        110.62,
+        111.177,
+        111.734,
+        112.292,
+        112.849,
+        113.406,
+        113.964,
+        114.498,
+        115.078,
+        115.635,
+        116.193,
+        116.727,
+        117.307,
+        117.841,
+        118.422,
+        118.956,
+        119.513,
+        120.07,
+        120.628,
+        121.162,
+        121.742,
+        122.3,
+        122.857,
+        123.414,
+        123.995,
+        124.505,
+        125.063,
+        125.62,
+        126.177,
+        126.735,
+        127.292,
+        127.849,
+        128.406,
+        128.94,
+        129.521,
+        130.055,
+        130.612,
+        131.17,
+        131.727,
+        132.284,
+        132.841,
+        133.399,
+        133.956,
+        134.513,
+        135.07,
+        135.628,
+        136.185,
+        136.719,
+        137.3,
+        137.834,
+        138.391,
+        138.948,
+        139.505,
+        140.063,
+        140.643,
+        141.201,
+        141.735,
+        142.292,
+        142.849,
+        143.383,
+        143.964,
+        144.521,
+        145.078,
+        145.612,
+        146.17,
+        146.727,
+        147.284,
+        147.841,
+        148.399,
+        148.956,
+        149.513,
+        150.071,
+        150.628,
+        151.185,
+        151.742,
+        152.276,
+        152.857,
+        153.414,
+        153.972,
+        154.506,
+        155.063,
+        155.62,
+        156.177,
+        156.735,
+        157.292,
+        157.849,
+        158.407,
+        158.941,
+        159.521,
+        160.078,
+        160.636,
+        161.17,
+        161.727,
+        162.284,
+        162.842,
+        163.399,
+        163.956,
+        164.513,
+        165.071,
+        165.628,
+        166.185,
+        166.742,
+        167.3,
+        167.834,
+        168.414,
+        168.972,
+        169.529,
+        170.063,
+        170.62,
+        171.178,
+        171.735,
+        172.292,
+        172.849,
+        173.407,
+        173.964,
+        174.498,
+        175.078,
+        175.636,
+        176.193,
+        176.727,
+        177.284,
+        177.865,
+        178.422,
+        178.979,
+        179.537,
+        180.094,
+        180.651,
+        181.209,
+        181.766,
+        182.323,
+        182.88,
+        183.438,
+        183.995,
+        184.552,
+        185.086,
+        185.644,
+        186.201,
+        186.735,
+        187.292,
+        187.849,
+        188.407,
+        188.964,
+        189.521,
+        190.079,
+        190.636,
+        191.193,
+        191.75,
+        192.308,
+        192.865,
+        193.399
+    ]
+}

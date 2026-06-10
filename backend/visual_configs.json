@@ -1,0 +1,203 @@
+{
+  "default": {
+    "label": "Classic Vertical Drift",
+    "description": "Stacked phrase blocks with gentle center drift and highlighted verbs/proper nouns.",
+    "phrase_layout_sequence": [
+      {
+        "layout": "center_stack",
+        "anchor": "center",
+        "line_gap": 88,
+        "enter_fx": "fade",
+        "exit_fx": "fade",
+        "motion": {"type": "drift", "amplitude": 36, "axis": "xy", "speed": 0.45},
+        "background": {"type": "panel", "color": "#1e1e1e", "opacity": 0.6, "padding": 48, "corner_radius": 18}
+      },
+      {
+        "layout": "center_stack",
+        "anchor": "center",
+        "line_gap": 76,
+        "enter_fx": "fade",
+        "exit_fx": "shrink",
+        "motion": {"type": "float", "amplitude": 22, "axis": "y", "speed": 0.6}
+      }
+    ],
+    "word_style": {
+      "base": {"font": "/System/Library/Fonts/Supplemental/Arial.ttf", "fontsize": 72, "color": "#f7f7f7", "stroke_color": "#000000", "stroke_width": 2},
+      "rules": [
+        {"match": {"pos": ["PROPN", "VERB"]}, "style": {"font": "/System/Library/Fonts/Supplemental/Arial Bold.ttf", "color": "#FADADD", "fontsize": 86}},
+        {"match": {"min_length": 7}, "style": {"color": "#B5F5EC"}},
+        {"match": {"pos": ["ADJ"], "min_length": 4}, "style": {"case": "upper", "fontsize": 78}}
+      ]
+    }
+  },
+  "constellation": {
+    "label": "Constellation Storyboard",
+    "description": "Alternates between diagonal constellations and split focus panels for narrative layering.",
+    "phrase_layout_sequence": [
+      {
+        "layout": "diagonal_wave",
+        "anchor": "center",
+        "diagonal_step": {"x": 120, "y": -92},
+        "enter_fx": "slide_left",
+        "exit_fx": "fade",
+        "motion": {"type": "orbit", "radius": 58, "speed": 0.7, "axis": "xy"},
+        "background": {"type": "panel", "color": "#ffffff", "opacity": 0.08, "padding": 90, "corner_radius": 32}
+      },
+      {
+        "layout": "split_columns",
+        "anchor": "center",
+        "column_gap": 160,
+        "enter_fx": "scale_in",
+        "exit_fx": "fade",
+        "motion": {"type": "float", "amplitude": 34, "axis": "x", "speed": 0.5}
+      },
+      {
+        "layout": "center_overlay",
+        "anchor": "center",
+        "enter_fx": "fade",
+        "exit_fx": "lift",
+        "motion": {"type": "drift", "amplitude": 28, "axis": "xy", "speed": 0.55}
+      }
+    ],
+    "word_style": {
+      "base": {"font": "/System/Library/Fonts/Supplemental/Arial.ttf", "fontsize": 70, "color": "#E8E8FF", "stroke_color": "#1A1A1A", "stroke_width": 3},
+      "rules": [
+        {"match": {"pos": ["VERB"], "min_length": 4}, "style": {"font": "/System/Library/Fonts/Supplemental/Arial Bold.ttf", "color": "#FFD166", "fontsize": 90}},
+        {"match": {"pos": ["NOUN"], "min_length": 6}, "style": {"color": "#64FFDA", "fontsize": 78}},
+        {"match": {"pos": ["PROPN"]}, "style": {"color": "#F28BFB", "fontsize": 96, "case": "title"}},
+        {"match": {"index": "last"}, "style": {"color": "#FFFFFF", "fontsize": 72, "outline": {"color": "#000000", "width": 4}}}
+      ]
+    }
+  },
+  "flashcards": {
+    "label": "Flashcard Montage",
+    "description": "Snaps phrases into bold cards with punch-in emphasis and quick lateral pans.",
+    "phrase_layout_sequence": [
+      {
+        "layout": "center_stack",
+        "anchor": "center",
+        "line_gap": 68,
+        "enter_fx": "scale_in",
+        "exit_fx": "fade",
+        "motion": {"type": "pan", "direction": "left", "distance": 420, "speed": 0.4},
+        "background": {"type": "panel", "color": "#0f0f0f", "opacity": 0.85, "padding": 80, "corner_radius": 16}
+      },
+      {
+        "layout": "split_columns",
+        "anchor": "center",
+        "column_gap": 220,
+        "enter_fx": "slide_up",
+        "exit_fx": "fade",
+        "motion": {"type": "pan", "direction": "right", "distance": 360, "speed": 0.45}
+      }
+    ],
+    "word_style": {
+      "base": {"font": "/System/Library/Fonts/Supplemental/Arial Bold.ttf", "fontsize": 88, "color": "#FFFFFF", "stroke_color": "#111111", "stroke_width": 4},
+      "rules": [
+        {"match": {"index": "first"}, "style": {"fontsize": 104}},
+        {"match": {"pos": ["ADV", "INTJ"]}, "style": {"fontsize": 76, "color": "#FF6F61"}},
+        {"match": {"min_length": 8}, "style": {"color": "#4DD0E1"}}
+      ]
+    }
+  },
+  "kinetic_art": {
+    "label": "Kinetic Art (Die Alone Style)",
+    "description": "Deep crimson canvas. Words scale by POS weight — nouns/verbs explode large, function words whisper small. Each word ghosts until its exact sung moment, then snaps bright.",
+    "phrase_layout_sequence": [
+      {
+        "layout": "center_overlay",
+        "anchor": "center",
+        "overlay_offset": {"x": 0, "y": 0},
+        "enter_fx": "scale_in",
+        "exit_fx": "fade",
+        "motion": {"type": "drift", "amplitude": 16, "axis": "xy", "speed": 0.3},
+        "background": {"type": "panel", "color": "#3a0712", "opacity": 1.0, "padding": 0, "corner_radius": 0}
+      }
+    ],
+    "word_style": {
+      "base": {"font": "/System/Library/Fonts/Supplemental/Arial Bold.ttf", "fontsize": 96, "color": "#F5E6E8", "stroke_color": "#1a0207", "stroke_width": 3, "opacity": 1.0},
+      "rules": [
+        {"match": {"pos": ["NOUN", "PROPN"]}, "style": {"fontsize": 168, "color": "#FFFFFF", "case": "upper"}},
+        {"match": {"pos": ["VERB"]}, "style": {"fontsize": 150, "color": "#FF5A5F", "case": "upper"}},
+        {"match": {"pos": ["ADJ"]}, "style": {"fontsize": 132, "color": "#FF9AA0"}},
+        {"match": {"pos": ["ADV", "INTJ", "NUM"]}, "style": {"fontsize": 104, "color": "#E8A7AC"}},
+        {"match": {"pos": ["DET", "ADP", "PRON", "AUX", "CCONJ", "SCONJ", "PART"]}, "style": {"fontsize": 52, "color": "#8C3A44", "opacity": 0.55}},
+        {"match": {"min_length": 8}, "style": {"case": "upper"}},
+        {"match": {"index": "first"}, "style": {"outline": {"color": "#FF5A5F", "width": 6}}}
+      ]
+    }
+  },
+  "rhyme_scheme": {
+    "label": "Rhyme Scheme (Color Coded)",
+    "description": "Dark stage with centered lyric lines. Rhyming word-pairs share a color box that flares as each word is sung — karaoke sync + rhyme analysis in one view.",
+    "rhyme_analysis": {
+      "enabled": true,
+      "scope": "couplet_window",
+      "window_lines": 4,
+      "min_syllable_match": 1,
+      "palette": ["#FF5D73", "#FFD166", "#06D6A0", "#4CC9F0", "#B388FF", "#F78C6B", "#80FFDB", "#FF99C8", "#A0E548"],
+      "box_style": {"corner_radius": 10, "padding": 14, "opacity_idle": 0.28, "opacity_active": 0.95, "flare_scale": 1.12}
+    },
+    "phrase_layout_sequence": [
+      {
+        "layout": "center_stack",
+        "anchor": "center",
+        "line_gap": 96,
+        "enter_fx": "fade",
+        "exit_fx": "fade",
+        "motion": {"type": "static"},
+        "background": {"type": "panel", "color": "#0a0a0f", "opacity": 0.92, "padding": 70, "corner_radius": 12}
+      }
+    ],
+    "word_style": {
+      "base": {"font": "/System/Library/Fonts/Supplemental/Arial Bold.ttf", "fontsize": 78, "color": "#EDEDED", "stroke_color": "#000000", "stroke_width": 2, "kerning": 1},
+      "rules": [
+        {"match": {"pos": ["NOUN", "VERB", "PROPN", "ADJ"]}, "style": {"color": "#FFFFFF"}},
+        {"match": {"pos": ["DET", "ADP", "PRON", "AUX", "CCONJ", "SCONJ", "PART"]}, "style": {"color": "#9AA0AA"}},
+        {"match": {"index": "last"}, "style": {"fontsize": 84}}
+      ]
+    }
+  },
+  "chameleon": {
+    "label": "Rhyme Matrix (Vivid)",
+    "description": "Explosive, high-contrast kinetic typography with semantic neon highlighting and beat-synced motion.",
+    "phrase_layout_sequence": [
+      {
+        "layout": "diagonal_wave",
+        "anchor": "center",
+        "diagonal_step": {"x": 160, "y": -110},
+        "enter_fx": "scale_in",
+        "exit_fx": "lift",
+        "motion": {"type": "orbit", "radius": 70, "speed": 0.9, "axis": "xy"},
+        "background": {"type": "panel", "color": "#000000", "opacity": 0.9, "padding": 120, "corner_radius": 0}
+      },
+      {
+        "layout": "center_overlay",
+        "anchor": "center",
+        "overlay_offset": {"x": 25, "y": -15},
+        "enter_fx": "slide_left",
+        "exit_fx": "fade",
+        "motion": {"type": "drift", "amplitude": 45, "axis": "xy", "speed": 0.7}
+      },
+      {
+        "layout": "split_columns",
+        "anchor": "center",
+        "column_gap": 250,
+        "enter_fx": "slide_up",
+        "exit_fx": "shrink",
+        "motion": {"type": "pan", "direction": "down", "distance": 500, "speed": 0.5}
+      }
+    ],
+    "word_style": {
+      "base": {"font": "/System/Library/Fonts/Supplemental/Arial Bold.ttf", "fontsize": 110, "color": "#FFFFFF", "stroke_color": "#000000", "stroke_width": 5},
+      "rules": [
+        {"match": {"pos": ["VERB"]}, "style": {"color": "#00FFCC", "fontsize": 130}},
+        {"match": {"pos": ["NOUN"]}, "style": {"color": "#FF0088", "fontsize": 120}},
+        {"match": {"pos": ["ADJ"]}, "style": {"color": "#FFFF00", "fontsize": 125, "case": "upper"}},
+        {"match": {"pos": ["PROPN"]}, "style": {"color": "#0080FF", "fontsize": 140, "font": "/System/Library/Fonts/Supplemental/Arial.ttf"}},
+        {"match": {"index": "first"}, "style": {"outline": {"color": "#00FFCC", "width": 8}}},
+        {"match": {"index": "last"}, "style": {"outline": {"color": "#FF0088", "width": 8}}}
+      ]
+    }
+  }
+}

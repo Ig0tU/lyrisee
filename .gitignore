@@ -1,0 +1,7 @@
+node_modules/
+.vercel/
+__pycache__/
+*.pyc
+*.mp4
+*.zip
+.DS_Store

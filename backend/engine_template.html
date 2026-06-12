@@ -4,6 +4,16 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Lyrisee — Kinetic Typography Engine</title>
+  <meta name="description" content="A kinetic typography engine that synchronizes lyrics to audio or video." />
+  <meta property="og:title" content="Lyrisee — Kinetic Typography Engine" />
+  <meta property="og:description" content="A kinetic typography engine that synchronizes lyrics to audio or video." />
+  <meta property="og:url" content="https://lyrisee.com/" />
+  <meta property="og:site_name" content="Lyrisee" />
+  <meta property="og:image" content="https://lyrisee.com/preview.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Lyrisee — Kinetic Typography Engine" />
+  <meta name="twitter:description" content="A kinetic typography engine that synchronizes lyrics to audio or video." />
+  <meta name="twitter:image" content="https://lyrisee.com/preview.png" />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo+Black&family=Dancing+Script:wght@700&family=Inter:wght@400;600;800;900&display=swap" rel="stylesheet">
@@ -192,6 +202,14 @@
       </div>
       <div id="ingestStatus"></div>
       <button id="playBtn" disabled>▶ Play</button>
+
+      <div class="row">
+        <label style="cursor:pointer; display:flex; align-items:center; gap:8px;">
+          <input type="checkbox" id="approvalModeCheck">
+          <span style="font-size:12px; color:var(--dim);">Approval Mode (line-by-line checker)</span>
+        </label>
+      </div>
+
       <div class="demo">No track handy? <a id="demoLink">Load the demo</a></div>
     </div>
     <div id="introNote">Feed it any song. Drop the audio or video, then add the <b>lyric_data.json</b> your pipeline produces
@@ -662,12 +680,98 @@ function updateBeat(now){
   if(BEATS[GL.lastBeat]>now){ GL.lastBeat=-1; while(GL.lastBeat+1<BEATS.length && BEATS[GL.lastBeat+1]<=now) GL.lastBeat++; }
 }
 let lastNow=0, scrubbing=false;
+
+/* Line-by-Line Approval Mode */
+let approvalMode = false;
+let approvedLines = new Set();
+let pendingLineIdx = -1;
+const approvalModeCheck = document.getElementById('approvalModeCheck');
+const approvalModal = document.getElementById('approvalModal');
+const apprOrig = document.getElementById('apprOrig');
+const apprInput = document.getElementById('apprInput');
+const apprBtn = document.getElementById('apprBtn');
+
+approvalModeCheck.addEventListener('change', (e) => {
+  approvalMode = e.target.checked;
+  if(!approvalMode) { approvalModal.style.display='none'; }
+});
+
+function checkApproval(now) {
+  if (!approvalMode || !LINES.length) return;
+
+  // Find the next upcoming line or current line
+  let li = -1;
+  for (let k = 0; k < LINES.length; k++) {
+    if (now >= LINES[k].start - 0.2) {
+      li = k;
+    } else {
+      break;
+    }
+  }
+
+  if (li >= 0 && !approvedLines.has(li)) {
+    // Pause playback
+    if (Clock.playing) Clock.pause();
+    pendingLineIdx = li;
+
+    // Show modal
+    const ln = LINES[li];
+    const words = ln.idx.map(wi => WORDS[wi]);
+    const origText = words.map(w => w.original_text || w.text).join(' ');
+    const currText = words.map(w => w.text).join(' ');
+
+    apprOrig.textContent = origText;
+    apprInput.value = currText;
+    approvalModal.style.display = 'flex';
+  }
+}
+
+apprBtn.addEventListener('click', () => {
+  if(pendingLineIdx >= 0) {
+    const ln = LINES[pendingLineIdx];
+    const newText = apprInput.value.trim();
+    const words = ln.idx.map(wi => WORDS[wi]);
+    const oldText = words.map(w => w.text).join(' ');
+
+    if (newText !== oldText) {
+      const newTokens = newText.split(/\s+/);
+      const oldTokens = words;
+
+      oldTokens.forEach(w => {
+        if(!w.original_text) w.original_text = w.text;
+      });
+
+      if(newTokens.length === oldTokens.length) {
+         oldTokens.forEach((w, i) => w.text = newTokens[i]);
+      } else {
+         let j=0;
+         for(let i=0; i<oldTokens.length; i++){
+            oldTokens[i].text = (i < newTokens.length) ? newTokens[i] : '';
+            j=i;
+         }
+         if(newTokens.length > oldTokens.length) {
+            oldTokens[j].text += ' ' + newTokens.slice(j+1).join(' ');
+         }
+      }
+
+      if(GL.ok) { GL.active.forEach(w=>w.dispose()); GL.active.clear(); }
+      embClear();
+      if(cur&&cur.layer==='dom') buildDOMOnce();
+    }
+
+    approvedLines.add(pendingLineIdx);
+    pendingLineIdx = -1;
+    approvalModal.style.display = 'none';
+    Clock.play();
+  }
+});
+
 function frame(){
   requestAnimationFrame(frame); Clock.tick();
   const now=Clock.time; const dt=Math.min(0.05,Math.max(0,now-lastNow)); lastNow=now;
   if(!scrubbing) scrub.value=Math.round((now/Clock.duration)*1000)||0;
   timeEl.textContent=fmt(now)+' / '+fmt(Clock.duration);
-  updateBeat(now); applyArrangement(now);
+  updateBeat(now); applyArrangement(now); checkApproval(now);
   if(cur.layer==='embody'){ renderEmbodimentDOM(now); }
   else if(cur.layer==='gl' && GL.ok && GL.font){
     const LEAD=0.1,TAIL=0.18;  // tight windows -> few words coexist (no center pile-up)
@@ -881,5 +985,17 @@ function boot(){
 boot();
 })();
 </script>
+
+<div id="approvalModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:9999; flex-direction:column; align-items:center; justify-content:center;">
+  <div style="background:var(--panel); border:1px solid var(--line); padding:24px; border-radius:12px; width:90%; max-width:600px;">
+    <h3 style="margin-top:0; font-size:16px;">Approve Line</h3>
+    <p style="font-size:12px; color:var(--dim); margin-bottom:12px;">Review the transcribed line. Edit if necessary, then approve to continue playing. The original will be kept for comparison.</p>
+    <div style="margin-bottom:8px; font-size:11px; color:var(--dim);">Original: <span id="apprOrig" style="color:var(--ink);"></span></div>
+    <textarea id="apprInput" style="width:100%; height:80px; background:#000; color:var(--ink); border:1px solid var(--line); border-radius:6px; padding:12px; font-family:inherit; font-size:16px; margin-bottom:16px;"></textarea>
+    <div style="display:flex; justify-content:flex-end; gap:12px;">
+      <button id="apprBtn" class="ghost" style="border-color:#4CAF50; color:#4CAF50;">Approve & Continue</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>

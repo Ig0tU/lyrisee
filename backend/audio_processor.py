@@ -79,7 +79,7 @@ def detect_beats(audio_path: str):
     """Return beat timestamps (seconds) via librosa, plus tempo (bpm)."""
     import librosa  # type: ignore
 
-    print("[beats] loading audio + tracking beats …")
+    print("[beats] loading media + tracking beats …")
     y, sr = librosa.load(audio_path, mono=True)
     tempo, frames = librosa.beat.beat_track(y=y, sr=sr)
     beats = [round(float(t), 3) for t in librosa.frames_to_time(frames, sr=sr)]
@@ -137,8 +137,8 @@ def tag_pos(words):
 
 
 def main():
-    ap = argparse.ArgumentParser(description="Lyrisee audio -> lyric_data.json (word-level sync)")
-    ap.add_argument("audio", help="input audio file (mp3/wav/m4a)")
+    ap = argparse.ArgumentParser(description="Lyrisee media -> lyric_data.json (word-level sync)")
+    ap.add_argument("audio", help="input media file (mp3/wav/m4a/mp4/webm)")
     ap.add_argument("-o", "--out", default="lyric_data.json", help="output JSON path")
     ap.add_argument("--model", default="base", help="Whisper size: tiny|base|small|medium|large")
     ap.add_argument("--separate", action="store_true", help="run demucs to isolate vocals first")
@@ -147,7 +147,7 @@ def main():
     args = ap.parse_args()
 
     if not os.path.isfile(args.audio):
-        sys.exit(f"audio not found: {args.audio}")
+        sys.exit(f"media not found: {args.audio}")
 
     asr_input = separate_vocals(args.audio) if args.separate else args.audio
     words = transcribe_words(asr_input, args.model)

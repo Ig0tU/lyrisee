@@ -1,26 +1,4 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Lyrisee — Kinetic Typography Engine</title>
-  <meta name="description" content="A kinetic typography engine that synchronizes lyrics to audio or video." />
-  <meta property="og:title" content="Lyrisee — Kinetic Typography Engine" />
-  <meta property="og:description" content="A kinetic typography engine that synchronizes lyrics to audio or video." />
-  <meta property="og:url" content="https://lyrisee.com/" />
-  <meta property="og:site_name" content="Lyrisee" />
-  <meta property="og:image" content="https://lyrisee.com/preview.png" />
-  <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="Lyrisee — Kinetic Typography Engine" />
-  <meta name="twitter:description" content="A kinetic typography engine that synchronizes lyrics to audio or video." />
-  <meta name="twitter:image" content="https://lyrisee.com/preview.png" />
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo+Black&family=Dancing+Script:wght@700&family=Inter:wght@400;600;800;900&display=swap" rel="stylesheet">
-<script defer src="https://cdn.vercel-insights.com/v1/script.js"></script>
-<style>
-  :root{
-    --ink:#ECEAE4; --dim:#8C8A84; --faint:#6f6e69; --bg:#000;
+
     --line:rgba(236,234,228,.16); --panel:rgba(20,20,21,.86);
   }
   *{box-sizing:border-box}
@@ -79,6 +57,11 @@
   .ghost:hover{border-color:#7a786f}
   .ghost:disabled{opacity:.45;cursor:not-allowed}
   #ingestStatus{min-height:1.3em;font-size:12.5px;color:var(--dim);line-height:1.5}
+  #logPanel{display:none;margin-top:8px;background:#0a0a0a;border:1px solid var(--line);border-radius:8px;padding:8px 10px;max-height:140px;overflow-y:auto;font-family:'Courier New',monospace;font-size:11px;line-height:1.55;color:#8a8}
+  #logPanel .log-line{white-space:pre-wrap;word-break:break-all}
+  #logPanel .log-err{color:#f87}
+  #logPanel .log-done{color:#4f9}
+  #logTimer{display:inline-block;font-variant-numeric:tabular-nums;color:var(--faint);font-size:11px;margin-left:6px}
   #playBtn{align-self:center;margin-top:2px;font-family:'Inter';font-weight:800;font-size:16px;letter-spacing:.03em;padding:14px 46px;border-radius:999px;border:0;cursor:pointer;
            color:#0b0b0c;background:#F2EFE8;box-shadow:0 8px 30px rgba(0,0,0,.5);transition:transform .15s, box-shadow .15s, background .15s, opacity .2s}
   #playBtn:hover:not(:disabled){transform:translateY(-2px);background:#fff;box-shadow:0 14px 40px rgba(0,0,0,.6)}
@@ -235,6 +218,7 @@
       </div>
       <button class="ghost" id="processBtn" style="margin-top:8px;width:100%;justify-content:center;">⚡ Run Cloud AI</button>
       <div id="ingestStatus"></div>
+      <div id="logPanel"></div>
       <button id="playBtn" disabled>▶ Play</button>
 
       <div class="row">
@@ -566,15 +550,46 @@ function sceneForLine(li){ if(!SCENES.length) return null; const ls=LINES[li].st
 function embClear(){ if(embodyLayer){ embodyLayer.innerHTML=''; } EMB.spans=[]; EMB.lineIdx=-1; EMB.sym=null; EMB.fig=null; EMB.scene=null; }
 function embLayoutPx(spans, metaphor){
   const n=spans.length, vw=window.innerWidth, vh=window.innerHeight;
-  const widths=spans.map(s=>s.w), gh=spans.reduce((a,s)=>Math.max(a,s.h),18);
-  const gap=Math.max(10, gh*0.4), lineH=gh*1.5, pos=[];
-  function rowWrap(){ const maxW=Math.min(vw*0.82,1100), rows=[[]]; let w=0;
-    for(let i=0;i<n;i++){ if(w+widths[i]>maxW && rows[rows.length-1].length){rows.push([]);w=0;} rows[rows.length-1].push(i); w+=widths[i]+gap; }
+  // use visually-scaled widths so layout reflects actual rendered size
+  const widths=spans.map(s=>(s.w||40)*(s.emS||1)*0.8);
+  const gh=spans.reduce((a,s)=>Math.max(a,s.h),18);
+  const gap=Math.max(14, gh*0.45), lineH=gh*1.6, pos=[];
+
+  function rowWrap(){
+    const maxW=Math.min(vw*0.82,1100), rows=[[]]; let w=0;
+    for(let i=0;i<n;i++){
+      if(w+widths[i]>maxW && rows[rows.length-1].length){rows.push([]);w=0;}
+      rows[rows.length-1].push(i); w+=widths[i]+gap;
+    }
     const totalH=(rows.length-1)*lineH;
-    rows.forEach((row,ri)=>{ let rw=row.reduce((a,i)=>a+widths[i],0)+gap*(row.length-1), x=-rw/2; const y=-totalH/2+ri*lineH;
-      row.forEach(i=>{ pos[i]={x:x+widths[i]/2, y:y}; x+=widths[i]+gap; }); }); }
-  if(metaphor==='row'){ rowWrap(); }
-  else if(metaphor==='split'){ rowWrap(); pos.forEach((p,i)=>p.x+=(i%2?1:-1)*Math.min(vw*0.13,150)); }
+    rows.forEach((row,ri)=>{
+      let rw=row.reduce((a,i)=>a+widths[i],0)+gap*(row.length-1), x=-rw/2;
+      const y=-totalH/2+ri*lineH;
+      row.forEach(i=>{ pos[i]={x:x+widths[i]/2, y:y}; x+=widths[i]+gap; });
+    });
+  }
+
+  // iterative deoverlap: push word pairs apart until none overlap
+  function deoverlap(){
+    for(let iter=0;iter<24;iter++){
+      let moved=false;
+      for(let i=0;i<n;i++) for(let j=i+1;j<n;j++){
+        const minX=(widths[i]+widths[j])*0.5+gap*0.6, minY=gh*0.82;
+        const dx=pos[j].x-pos[i].x, dy=pos[j].y-pos[i].y;
+        if(Math.abs(dx)<minX && Math.abs(dy)<minY){
+          // push along the axis with least overlap to resolve
+          const ox=minX-Math.abs(dx), oy=minY-Math.abs(dy);
+          if(ox<oy){ const p=ox*0.5*(dx>=0?1:-1); pos[i].x-=p; pos[j].x+=p; }
+          else      { const p=oy*0.5*(dy>=0?1:-1); pos[i].y-=p; pos[j].y+=p; }
+          moved=true;
+        }
+      }
+      if(!moved) break;
+    }
+  }
+
+  if(metaphor==='row'){ rowWrap(); deoverlap(); }
+  else if(metaphor==='split'){ rowWrap(); pos.forEach((p,i)=>p.x+=(i%2?1:-1)*Math.min(vw*0.13,150)); deoverlap(); }
   else if(metaphor==='ascend'||metaphor==='fall'){ const spanW=Math.min(vw*0.74,880), stepx=spanW/Math.max(1,n-1), H=Math.min(vh*0.52,380), stepy=H/Math.max(1,n-1), dir=(metaphor==='ascend'?-1:1);
     for(let i=0;i<n;i++) pos[i]={x:-spanW/2+i*stepx, y:(metaphor==='ascend'?H/2:-H/2)+dir*i*stepy}; }
   else if(metaphor==='stack'){ const totalH=(n-1)*lineH; for(let i=0;i<n;i++) pos[i]={x:0,y:-totalH/2+i*lineH}; }
@@ -582,10 +597,11 @@ function embLayoutPx(spans, metaphor){
   else if(metaphor==='path'){ const spanW=Math.min(vw*0.82,940); for(let i=0;i<n;i++){ const f=i/Math.max(1,n-1); pos[i]={x:-spanW/2+f*spanW, y:(f-0.5)*Math.min(vh*0.42,320)}; } }
   else if(metaphor==='cage'){ const W=Math.min(vw*0.5,520), H=Math.min(vh*0.5,360), per=2*(W+H); for(let i=0;i<n;i++){ let d=(i/n)*per,x,y; if(d<W){x=-W/2+d;y=-H/2;} else if(d<W+H){x=W/2;y=-H/2+(d-W);} else if(d<2*W+H){x=W/2-(d-W-H);y=H/2;} else {x=-W/2;y=H/2-(d-2*W-H);} pos[i]={x,y}; } }
   else if(metaphor==='cagebars'){ const spanW=Math.min(vw*0.72,840), step=spanW/Math.max(1,n); for(let i=0;i<n;i++) pos[i]={x:-spanW/2+step*(i+0.5), y:0}; }
-  else rowWrap();
-  // keep every word fully on-screen — #embody-layer clips overflow, so clamp to a safe inset
+  else{ rowWrap(); deoverlap(); }
+
+  // clamp every word to the safe viewport inset
   const mx=vw*0.47, my=vh*0.43;
-  for(let i=0;i<n;i++){ const hw=(widths[i]||40)/2+6, hh=(gh)/2+6;
+  for(let i=0;i<n;i++){ const hw=widths[i]/2+6, hh=gh/2+6;
     pos[i].x=Math.max(-mx+hw, Math.min(mx-hw, pos[i].x));
     pos[i].y=Math.max(-my+hh, Math.min(my-hh, pos[i].y)); }
   return pos;
@@ -603,7 +619,9 @@ function embBuild(li){
     if(d&&d.icon&&iconGlyph(d.icon)){ const g=iconGlyph(d.icon); const n=Math.max(1,Math.min(4,d.count||1)); for(let c=0;c<n;c++){ const ic=document.createElement('span'); ic.className='ic'; ic.textContent=g; el.appendChild(ic); } }
     embodyLayer.appendChild(el); return {wi, el, sung:false, placed:false, rot:0, emS:[0.66,0.92,1.16,1.34][emph]}; });
   spans.forEach(s=>{ s.w=s.el.offsetWidth||40; s.h=s.el.offsetHeight||28; });
-  const metaphor=(scene&&scene.metaphor)||metaForLine(li);
+  // AI pipeline (METAS/SCENES) owns metaphor layouts; browser-only mode stays clean row
+  const hasAI = METAS.length > 0 || SCENES.length > 0;
+  const metaphor = hasAI ? ((scene&&scene.metaphor)||metaForLine(li)) : 'row';
   const targets=embLayoutPx(spans, metaphor);
   // scene rotations: e.g. "back" -> 90deg (a figure turning away); cagebars -> all words become vertical bars
   if(scene&&scene.rotate){ spans.forEach(s=>{ const k=clean(WORDS[s.wi].text); for(const rk in scene.rotate){ if(k===clean(rk)) s.rot=scene.rotate[rk]; } }); }
@@ -834,6 +852,26 @@ function frame(){
    ========================================================================== */
 let lastAudioFile=null, dataReady=false;
 function setStatus(t){ ingestStatus.textContent=t||''; }
+const logPanel=document.getElementById('logPanel');
+let _timerInterval=null;
+function logStart(){
+  logPanel.innerHTML=''; logPanel.style.display='block';
+  if(_timerInterval) clearInterval(_timerInterval);
+  const t0=Date.now();
+  _timerInterval=setInterval(()=>{
+    const s=((Date.now()-t0)/1000).toFixed(0);
+    const el=document.getElementById('_elapsed');
+    if(el) el.textContent=s+'s';
+  },500);
+}
+function logLine(text, cls){
+  const line=document.createElement('div'); line.className='log-line'+(cls?' '+cls:'');
+  line.textContent=text; logPanel.appendChild(line);
+  logPanel.scrollTop=logPanel.scrollHeight;
+}
+function logStop(){
+  if(_timerInterval){ clearInterval(_timerInterval); _timerInterval=null; }
+}
 function refreshPlay(){ playBtn.disabled=!dataReady; }
 function applyBackground(){
   const val = document.getElementById('bgSel').value;
@@ -890,66 +928,114 @@ function onJSONChosen(file){ if(!file) return; const r=new FileReader();
     catch(e){ setStatus('That isn\'t a lyric_data file — it needs a "words" array of {text,start,end,pos}.'); } };
   r.readAsText(file); }
 
-async function runCloudAI() {
+function runCloudAI() {
   const HF_BACKEND = "https://acecalisto3-lyrisee.hf.space/process";
   let apiUrl = document.getElementById('apiUrlInput').value.trim();
-
-  if (!apiUrl) {
-    // Running inside HF Space itself — use the local relative route
-    if (window.location.hostname.includes("hf.space")) {
-      apiUrl = "/process";
-    } else {
-      // Fallback to the known backend
-      apiUrl = HF_BACKEND;
-    }
-  }
-
-  // Ensure the URL ends with /process
-  if (!apiUrl.endsWith('/process')) {
-    apiUrl = apiUrl.replace(/\/$/, '') + '/process';
-  }
-
-  if(!lastAudioFile) { setStatus('Load an audio or video file first.'); return; }
+  if (!apiUrl) apiUrl = window.location.hostname.includes("hf.space") ? "/process" : HF_BACKEND;
+  if (!apiUrl.endsWith('/process')) apiUrl = apiUrl.replace(/\/$/, '') + '/process';
+  if (!lastAudioFile) { setStatus('Load an audio or video file first.'); return; }
 
   const btn = document.getElementById('processBtn');
   btn.disabled = true;
-  setStatus('Uploading to Cloud AI… this may take a few minutes.');
+  logStart();
+  ingestStatus.innerHTML = 'Uploading 0%… <span id="_elapsed">0s</span>';
 
   const provider = document.getElementById('aiProviderSel').value;
   const formData = new FormData();
   formData.append('file', lastAudioFile);
   formData.append('ai_provider', provider);
 
-  try {
-    const res = await fetch(apiUrl, { method: 'POST', body: formData });
-    if(!res.ok) throw new Error('API returned ' + res.status);
-    const data = await res.json();
-    if(data.error) throw new Error(data.error);
+  const xhr = new XMLHttpRequest();
+  xhr.open('POST', apiUrl);
+  let sseOffset = 0, result = null;
 
-    const n = loadData(data, TRACK_NAME || lastAudioFile.name.replace(/\.[^.]+$/, ''));
-    dataReady = true;
-    setStatus('Cloud processing complete! Loaded ' + n + ' words. Ready.');
-    refreshPlay();
-  } catch(e) {
-    console.error(e);
-    setStatus('Cloud processing failed: ' + e.message);
-  } finally {
-    btn.disabled = false;
+  // ── upload progress ──────────────────────────────────────────────────────
+  xhr.upload.onprogress = function(e) {
+    if (!e.lengthComputable) return;
+    const pct = Math.round(e.loaded / e.total * 100);
+    ingestStatus.innerHTML = 'Uploading ' + pct + '%… <span id="_elapsed">0s</span>';
+  };
+  xhr.upload.onload = function() {
+    ingestStatus.innerHTML = '☁️ File received — processing… <span id="_elapsed">0s</span>';
+    logLine('[upload] file transferred, pipeline starting…');
+  };
+
+  // ── streaming log lines while backend runs ───────────────────────────────
+  function parseSseChunk() {
+    const chunk = xhr.responseText.slice(sseOffset);
+    sseOffset = xhr.responseText.length;
+    chunk.split('\n').forEach(function(line) {
+      if (!line.startsWith('data: ')) return;
+      var msg; try { msg = JSON.parse(line.slice(6)); } catch(e) { return; }
+      if (msg.log) {
+        var cls = msg.log.startsWith('[done]') ? 'log-done' : '';
+        logLine(msg.log, cls);
+        if (msg.log.includes('[asr]'))   ingestStatus.innerHTML = '⏳ Transcribing… <span id="_elapsed">0s</span>';
+        else if (msg.log.includes('[beats]')) ingestStatus.innerHTML = '🎵 Beat tracking… <span id="_elapsed">0s</span>';
+      }
+      if (msg.error) { logLine('ERROR: ' + msg.error, 'log-err'); }
+      if (msg.done && msg.result) result = msg.result;
+    });
   }
+  xhr.onprogress = parseSseChunk;
+
+  // ── done ─────────────────────────────────────────────────────────────────
+  xhr.onload = function() {
+    parseSseChunk(); // flush any remaining data
+    logStop();
+    btn.disabled = false;
+    if (xhr.status !== 200) {
+      logLine('HTTP ' + xhr.status + ' — ' + xhr.statusText, 'log-err');
+      setStatus('Cloud processing failed: HTTP ' + xhr.status);
+      return;
+    }
+    if (!result) {
+      // backend might have returned plain JSON (older deploy) — try parsing directly
+      try { result = JSON.parse(xhr.responseText); } catch(e) {}
+    }
+    if (!result || !result.words) {
+      logLine('No result received — check logs above.', 'log-err');
+      setStatus('Cloud processing failed: no result data.');
+      return;
+    }
+    var n = loadData(result, TRACK_NAME || lastAudioFile.name.replace(/\.[^.]+$/, ''));
+    dataReady = true;
+    setStatus('Done — ' + n + ' words · ' + LINES.length + ' lines. Ready to play.');
+    refreshPlay();
+  };
+
+  xhr.onerror = function() {
+    logStop(); btn.disabled = false;
+    logLine('Network error — is the HF Space running?', 'log-err');
+    setStatus('Cloud processing failed: network error.');
+  };
+  xhr.ontimeout = function() {
+    logStop(); btn.disabled = false;
+    logLine('Request timed out after 10 minutes.', 'log-err');
+    setStatus('Cloud processing timed out.');
+  };
+
+  xhr.timeout = 600000; // 10 minutes
+  xhr.send(formData);
 }
 
 async function autoTranscribe(){
   if(!lastAudioFile){ setStatus('Load an audio or video file first.'); return; }
-  document.getElementById('processBtn').disabled=true; setStatus('Loading the in-browser speech model… first run downloads ~40 MB.');
+  const _pBtn=document.getElementById('processBtn'); _pBtn.disabled=true;
+  logStart();
+  logLine('[browser] loading Whisper model (whisper-tiny.en, ~40 MB — cached after first run)');
+  setStatus('⏳ Loading speech model…');
   try{
     const mod=await import('https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2');
     mod.env.allowLocalModels=false;
     const asr=await mod.pipeline('automatic-speech-recognition','Xenova/whisper-tiny.en',{quantized:true});
-    setStatus('Decoding audio…');
+    logLine('[browser] model ready — decoding audio buffer');
+    setStatus('⏳ Decoding audio…');
     const buf=await lastAudioFile.arrayBuffer();
     const AC=window.AudioContext||window.webkitAudioContext; const ac=new AC({sampleRate:16000});
     const ab=await ac.decodeAudioData(buf); const pcm=ab.getChannelData(0);
-    setStatus('Transcribing… (listening to the whole track)');
+    logLine('[browser] decoding done — running speech recognition (this takes a while for long tracks)');
+    setStatus('⏳ Transcribing…');
     const out=await asr(pcm,{return_timestamps:'word',chunk_length_s:30,stride_length_s:5});
     let words=[];
     if(out&&out.chunks&&out.chunks.length){
@@ -961,9 +1047,16 @@ async function autoTranscribe(){
     }
     if(!words.length) throw new Error('no words returned');
     const n=loadData({words,beats:[]}, TRACK_NAME||lastAudioFile.name.replace(/\.[^.]+$/,''));
-    dataReady=true; setStatus('Transcribed '+n+' words · '+LINES.length+' lines. (Tip: your pipeline\'s lyric_data.json will be more accurate.)'); refreshPlay();
-  }catch(e){ console.error(e); setStatus('In-browser transcription couldn\'t run here (needs WebGPU + model download). Drop your pipeline\'s lyric_data.json instead.'); }
-  finally{ document.getElementById('processBtn').disabled=false; }
+    logLine('[done] ' + n + ' words · ' + LINES.length + ' lines', 'log-done');
+    logStop();
+    dataReady=true; setStatus('Done — '+n+' words · '+LINES.length+' lines. Ready.'); refreshPlay();
+  }catch(e){
+    console.error(e);
+    logLine('ERROR: ' + e.message, 'log-err');
+    logStop();
+    setStatus('In-browser transcription failed: ' + e.message);
+  }
+  finally{ _pBtn.disabled=false; }
 }
 
 /* ============================================================================

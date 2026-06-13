@@ -201,6 +201,12 @@
       </div>
       <div class="row" style="margin-top:8px;">
         <input type="text" id="apiUrlInput" placeholder="HuggingFace Space URL (e.g. https://your-space.hf.space/process)" style="flex:1; padding:6px; font-size:12px; background:#111; color:var(--ink); border:1px solid var(--line); border-radius:4px;">
+        <select id="aiProviderSel" style="padding:6px; font-size:12px; background:#111; color:var(--ink); border:1px solid var(--line); border-radius:4px;">
+            <option value="gemini">Gemini (Google)</option>
+            <option value="ollama">Ollama Cloud (DeepSeek)</option>
+            <option value="anthropic">Claude (Anthropic)</option>
+            <option value="openai">ChatGPT (OpenAI)</option>
+        </select>
         <button class="ghost" id="cloudBtn" style="white-space:nowrap;">Run Cloud AI</button>
         <input id="jsonInput" type="file" accept=".json,application/json" hidden>
       </div>
@@ -839,7 +845,7 @@ function attachAudio(file){
   if(!TRACK_NAME){ TRACK_NAME=file.name; if(trackNameEl) trackNameEl.textContent=TRACK_NAME; }
   audioBtn.textContent='♪ '+(file.name.length>16?file.name.slice(0,15)+'…':file.name);
 }
-function onAudioChosen(file){ if(!file) return; attachAudio(file);
+function onAudioChosen(file){ alert("File chosen: " + (file ? file.name : "null")); if(!file) return; attachAudio(file);
   dropZone.innerHTML='Audio: <b>'+file.name+'</b>';
   setStatus(dataReady?'Media attached. Ready to play.':'Media loaded. Now add a lyric_data.json, or auto-transcribe.'); }
 function onJSONChosen(file){ if(!file) return; const r=new FileReader();
@@ -857,8 +863,10 @@ async function runCloudAI() {
   btn.disabled = true;
   setStatus('Uploading media to Cloud API... This may take a few minutes for separation and AI translation.');
 
+  const provider = document.getElementById('aiProviderSel').value;
   const formData = new FormData();
   formData.append('file', lastAudioFile);
+  formData.append('ai_provider', provider);
 
   try {
     const res = await fetch(apiUrl, { method: 'POST', body: formData });
@@ -1018,7 +1026,9 @@ function boot(){
   if(typeof THREE==='undefined'){ finish(null); return; }
   try{ new THREE.FontLoader().load(fontUrl, f=>finish(f), undefined, ()=>finish(null)); }catch(e){ finish(null); }
 }
+window.onerror = function(msg, url, line) { alert("ERROR: " + msg + "\nAt: " + url + ":" + line); };
 boot();
+} catch(e) { alert("BOOT ERROR: " + e.message); }
 })();
 </script>
 

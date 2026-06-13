@@ -193,15 +193,15 @@
     <h1>LYRISEE</h1>
     <div class="sub">Kinetic Typography · Any Song</div>
     <div id="ingest">
-                  <label class="drop" id="drop" style="display:block; cursor:pointer;">Drop an <b>audio or video file</b> here, or click to choose
-        <input id="audioInput" type="file" accept="audio/*,video/*" style="opacity:0; position:absolute; z-index:-1;">
-      </label>
+      <div class="drop" id="drop">Drop an <b>audio or video file</b> here, or click to choose
+        <input id="audioInput" type="file" accept="audio/*,video/*" hidden>
+      </div>
       <div class="row">
         <button class="ghost" id="jsonBtn">+ Add lyric data (.json)</button>
         <button class="ghost" id="xscribeBtn">Auto-transcribe in browser</button>
       </div>
       <div class="row" style="margin-top:8px;">
-        <input type="text" id="apiUrlInput" placeholder="HuggingFace Space URL (e.g. https://your-space.hf.space/process)" style="flex:1; padding:6px; font-size:12px; background:#111; color:var(--ink); border:1px solid var(--line); border-radius:4px;">
+        <input type="text" id="apiUrlInput" value="https://acecalisto3-lyrisee.hf.space/process" placeholder="HuggingFace Space URL (e.g. https://your-space.hf.space/process)" style="flex:1; padding:6px; font-size:12px; background:#111; color:var(--ink); border:1px solid var(--line); border-radius:4px;">
         <select id="aiProviderSel" style="padding:6px; font-size:12px; background:#111; color:var(--ink); border:1px solid var(--line); border-radius:4px;">
             <option value="gemini">Gemini (Google)</option>
             <option value="ollama">Ollama Cloud (DeepSeek)</option>
@@ -251,6 +251,7 @@ const DEMO_DATA = /*__LYRIC_DATA__*/{"words":[{"text":"Go","start":0.9,"end":1.0
 
 (function(){
 'use strict';
+try{
 /* song data is loaded at runtime — NOT bound to any single track */
 let WORDS=[], BEATS=[], LINES=[], WORD2LINE=new Int32Array(0), DURATION=8, TRACK_NAME='';
 let ARRANGEMENT=[], autoArrange=false;            // intent-driven construct switching
@@ -857,7 +858,7 @@ function attachAudio(file){
   if(!TRACK_NAME){ TRACK_NAME=file.name; if(trackNameEl) trackNameEl.textContent=TRACK_NAME; }
   audioBtn.textContent='♪ '+(file.name.length>16?file.name.slice(0,15)+'…':file.name);
 }
-function onAudioChosen(file){ alert("File chosen: " + (file ? file.name : "null")); if(!file) return; attachAudio(file);
+function onAudioChosen(file){ if(!file) return; attachAudio(file);
   dropZone.innerHTML='Audio: <b>'+file.name+'</b>';
   setStatus(dataReady?'Media attached. Ready to play.':'Media loaded. Now add a lyric_data.json, or auto-transcribe.'); }
 function onJSONChosen(file){ if(!file) return; const r=new FileReader();
@@ -867,18 +868,22 @@ function onJSONChosen(file){ if(!file) return; const r=new FileReader();
   r.readAsText(file); }
 
 async function runCloudAI() {
+  const HF_BACKEND = "https://acecalisto3-lyrisee.hf.space/process";
   let apiUrl = document.getElementById('apiUrlInput').value.trim();
-  
-  // The magic trick: Auto-detect where the user is!
-  if(!apiUrl) { 
-      if (window.location.hostname.includes("hf.space")) {
-          // If we are already running inside Hugging Face, just use the local route
-          apiUrl = "/process";
-      } else {
-          // If we are on Vercel, force the user to type in the Hugging Face URL
-          setStatus('Enter your HuggingFace API URL first.'); 
-          return; 
-      }
+
+  if (!apiUrl) {
+    // Running inside HF Space itself — use the local relative route
+    if (window.location.hostname.includes("hf.space")) {
+      apiUrl = "/process";
+    } else {
+      // Fallback to the known backend
+      apiUrl = HF_BACKEND;
+    }
+  }
+
+  // Ensure the URL ends with /process
+  if (!apiUrl.endsWith('/process')) {
+    apiUrl = apiUrl.replace(/\/$/, '') + '/process';
   }
 
   if(!lastAudioFile) { setStatus('Load an audio or video file first.'); return; }
@@ -1000,6 +1005,7 @@ function wireUI(){
   playBtn.addEventListener('click',start);
   // ingest
 
+  dropZone.addEventListener('click',()=>audioInput.click());
   dropZone.addEventListener('dragover',e=>{e.preventDefault();dropZone.classList.add('over');});
   dropZone.addEventListener('dragleave',()=>dropZone.classList.remove('over'));
   dropZone.addEventListener('drop',e=>{e.preventDefault();dropZone.classList.remove('over');const f=e.dataTransfer.files[0];
@@ -1050,9 +1056,8 @@ function boot(){
   if(typeof THREE==='undefined'){ finish(null); return; }
   try{ new THREE.FontLoader().load(fontUrl, f=>finish(f), undefined, ()=>finish(null)); }catch(e){ finish(null); }
 }
-window.onerror = function(msg, url, line) { alert("ERROR: " + msg + "\nAt: " + url + ":" + line); };
 boot();
-} catch(e) { alert("BOOT ERROR: " + e.message); }
+} catch(e) { console.error("BOOT ERROR:", e); }
 })();
 </script>
 

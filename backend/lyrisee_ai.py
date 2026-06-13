@@ -87,6 +87,30 @@ def llm(system: str, user: str, max_tokens: int = 4000) -> str:
     forced = os.environ.get("LYRISEE_LLM", "").lower()
     if _prefer_gemini_cli():
         return _llm_gemini_cli(system, user)
+    if (forced == "ollama") or (forced == "" and os.environ.get("OLLAMA_API_KEY")):
+        # Default to deepseek-v4-flash, or a similar cloud model since models are deprecating
+        # The user provided replacements: deepseek-v4-flash for cogito-2.1:671b, kimi-k2.6 for kimi-k2-thinking, minimax-m3, glm-5.1, qwen3.5
+        m = model or "deepseek-v4-flash"
+        # We can just use the _http_json helper which simulates curl, instead of installing the pip package to avoid dependency hell
+        # Ollama API is compatible with OpenAI chat completions format usually, but let's be careful.
+        # The prompt says: "https://ollama.com/api/tags" and provides a python example: client.chat(...)
+        # Actually, Ollama's native API is slightly different (`/api/chat`), but if we can't install the `ollama` package easily inside `run.sh` without modifying requirements.txt, using `_http_json` against `https://ollama.com/api/chat` is safest.
+
+        body = {
+            "model": m,
+            "messages": [
+                {"role": "system", "content": system},
+                {"role": "user", "content": user}
+            ],
+            "stream": False
+        }
+        out = _http_json(
+            "https://ollama.com/api/chat",
+            {"Authorization": "Bearer " + os.environ["OLLAMA_API_KEY"], "content-type": "application/json"},
+            body
+        )
+        return out.get("message", {}).get("content", "")
+
     if (forced == "anthropic") or (forced == "" and os.environ.get("ANTHROPIC_API_KEY")):
         out = _http_json(
             "https://api.anthropic.com/v1/messages",
@@ -128,7 +152,7 @@ def llm(system: str, user: str, max_tokens: int = 4000) -> str:
     raise RuntimeError("no LLM key configured (set ANTHROPIC_API_KEY | OPENAI_API_KEY | GEMINI_API_KEY)")
 
 def have_llm() -> bool:
-    return bool(gemini_cli_path()) or any(os.environ.get(k) for k in ("ANTHROPIC_API_KEY", "OPENAI_API_KEY", "GEMINI_API_KEY"))
+    return bool(gemini_cli_path()) or any(os.environ.get(k) for k in ("ANTHROPIC_API_KEY", "OPENAI_API_KEY", "GEMINI_API_KEY", "OLLAMA_API_KEY"))
 
 # ---------------------------------------------------------------- helpers
 def _norm(t): return re.sub(r"[^a-z']", "", (t or "").lower())

@@ -220,16 +220,19 @@ def _realign(words, corrected_tokens):
 
 # ---------------------------------------------------------------- 1.5) CONCEPT (invent the song's world)
 CONCEPT_SYS = (
-    "You are Lyrisee's CONCEPT stage. Read the WHOLE song and invent ITS OWN visual world the way an art "
-    "director would when briefed — derived from this song's genre, era, mood, imagery and the artist's "
-    "voice. NEVER default to a template (do not reach for crimson/pink-script/coffins unless THIS song is "
-    "literally about that). A drill track ≠ a love song ≠ a gospel cut. Output ONLY JSON: "
+    "You are the Auditory-to-Visual Translation Director for a high-fidelity kinetic typography engine. "
+    "Your mission is to deconstruct a vocal performance, reverse-engineering its lyrical content, emotional trajectory, "
+    "rhythmic flow, and sonic texture into a dynamic visual score. You don't just display lyrics; you orchestrate them. "
+    "THE CORE MANDATE: REPLICATE QUALITY-TIER UNDERSTANDING. "
+    "Before generating any directives, you MUST first complete a silent 'pre-flight' internal analysis of the provided audio/lyrics. "
+    "Your output should prove that you deeply understand the Narrative Arc & Emotional Tone, Vocal Delivery & Nuance, and Rhythmic Cadence & Pacing. "
+    "Output ONLY JSON: "
     "{\"palette\":{\"bg\":\"#dark\",\"ink\":\"#light\",\"accents\":[\"#..\",\"#..\"]}, "
     "\"fonts\":{\"display\":\"Anton|Archivo Black|Inter\",\"accent\":\"Archivo Black|Inter\","
     "\"script\":\"Dancing Script\"}, \"motifs\":{\"<song word/concept>\":\"<one emoji/symbol>\"}, "
     "\"motion\":\"snap|drift|float|glitch\",\"restraint\":0.0-1.0,\"mood\":\"1-3 words\","
     "\"construct_bias\":[\"embodiment\",\"rhyme_scheme\",\"chameleon\",\"kinetic_art\"]}. "
-    "Motifs must come from THIS song's own imagery (3-8). Key the palette to the song's feeling, not a default."
+    "Motifs must come from THIS song's own imagery. Key the palette to the song's feeling, not a default."
 )
 _MOTIF_HINTS = {"cage":"🧱","trapped":"🧱","lights":"🕯️","candle":"🕯️","fire":"🔥","burn":"🔥",
                 "water":"💧","streams":"💧","rain":"💧","mic":"🎤","crown":"👑","king":"👑",
@@ -273,20 +276,26 @@ def concept(words, lines_text=None):
 ICON_VOCAB = ["coffin","candle","hands","cage","crown","fire","water","ladder","peace","eyes",
               "gun","money","skull","heart","star","clock"]
 ART_SYS = (
-    "You are Lyrisee's DIRECTOR — you art-direct a kinetic-typography music video the way a motion designer "
-    "would (reference: the 'Die Alone' lyric video — per-word weight hierarchy, glowing SCRIPT for "
-    "tender/sacred/named/dreamlike words, ICON substitution for concrete imagery, deliberate composition, "
-    "and RESTRAINT: only 1-3 charged words per line, the rest read clean). "
+    "You are the Auditory-to-Visual Translation Director for a high-fidelity kinetic typography engine. "
+    "Your mission is to deconstruct a vocal performance, reverse-engineering its lyrical content, emotional trajectory, "
+    "rhythmic flow, and sonic texture into a dynamic visual score. You don't just display lyrics; you orchestrate them. "
+    "THE METHODOLOGY: "
+    "1. Embodiment: The lyric's literal meaning dictates its physical behavior (e.g., 'sinking' drops, 'wall' stacks). "
+    "2. Emphasis (The 'Hit'): Identify the 1-3 words per line where the vocalist places heavy stress, an emotional break, or syncopation. "
+    "3. Rhythm & Pace: Not every word is a special effect. Let connective tissue remain quiet. "
+    "4. Tonal Mapping: The song's dominant and shifting moods dictate a core color palette. "
     "You receive corrected lyrics as numbered lines. For EACH line return a composition 'metaphor' from ["
-    + ", ".join(METAPHORS) + "] ('row'=neutral), and 'hits' = the 1-3 words that carry the line. "
+    + ", ".join(METAPHORS) + "] based on meaning ('row'=neutral, 'stack', 'scatter', 'ascend', 'fall', 'split', 'cage', 'path', 'shatter'). "
+    "And return 'hits' = the 1-3 words that carry the line (vocal punch, emotional break, thematic importance). "
     "For each hit: w (the exact word), emphasis 0-3 (3=punchline / rhyme-carrier / proper name), "
     "register one of sans|heavy|script (script for tender/sacred/proper/dreamlike; heavy for aggression), "
-    "glow true/false, icon one of [" + ", ".join(ICON_VOCAB) + "] or null (only when the word literally "
-    "names that thing), and count (e.g. \"two\"->2). Also return rhyme_families: arrays of lowercased "
+    "glow true/false, icon (string representing an emoji/symbol ONLY where visual irony or literalism hits hard, "
+    "or null), and count (e.g. \"two\"->2). Also return rhyme_families: arrays of lowercased "
     "words that TRULY rhyme together (internal + end rhyme / multis). "
     "Return ONLY JSON: {\"lines\":[{\"i\":n,\"metaphor\":\"..\",\"hits\":[{\"w\":\"..\",\"emphasis\":2,"
     "\"register\":\"sans\",\"glow\":false,\"icon\":null,\"count\":1}]}],\"rhyme_families\":[[\"..\"]]}"
 )
+
 def art_direct(lines_text, concept=None):
     if not have_llm():
         return None
@@ -302,6 +311,7 @@ def art_direct(lines_text, concept=None):
         chunk = lines_text[b:b+BATCH]
         user = (note + "\nLyrics by line (line numbers are GLOBAL — keep them):\n" +
                 "\n".join(f"{b+i+1}. {t}" for i, t in enumerate(chunk)))
+
         try:
             j = _extract_json(llm(ART_SYS, user, max_tokens=8192))
             if j and isinstance(j.get("lines"), list):

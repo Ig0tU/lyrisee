@@ -1,4 +1,4 @@
-FROM python:3.10-slim
+FROM python:3.11-slim
 
 # Install system dependencies, including ffmpeg for audio processing
 RUN apt-get update && apt-get install -y ffmpeg curl && rm -rf /var/lib/apt/lists/*
@@ -16,6 +16,9 @@ COPY --chown=user backend/requirements.txt $HOME/app/requirements.txt
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt && \
     python3 -m spacy download en_core_web_sm
+
+# === Copy index.html into the container ===
+COPY --chown=user index.html $HOME/app/index.html
 
 # Copy the backend application
 COPY --chown=user backend/ $HOME/app/backend/

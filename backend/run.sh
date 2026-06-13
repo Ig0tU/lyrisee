@@ -11,12 +11,12 @@
 #
 set -euo pipefail
 
-AUDIO="${1:-DarkNights-80K.mp3}"
+MEDIA="${1:-DarkNights-80K.mp3}"
 PUBLIC_DIR="public"
 
 echo "==> Lyrisee setup"
-if [ ! -f "$AUDIO" ]; then
-  echo "!! Audio file not found: $AUDIO"
+if [ ! -f "$MEDIA" ]; then
+  echo "!! Media file not found: $MEDIA"
   echo "   Pass one explicitly:  ./run.sh path/to/song.mp3"
   exit 1
 fi
@@ -36,9 +36,9 @@ python3 -m spacy download en_core_web_sm >/dev/null 2>&1 || \
 #    + librosa (beat detection) + spaCy (POS).  Produces words[], beats[].
 #    NOTE: audio_processor.py is part of your backend (it was not in the archive
 #    shared with the agent). This calls it as documented in README__v2.md.
-echo "==> Processing audio: $AUDIO"
+echo "==> Processing media: $MEDIA"
 if [ -f "audio_processor.py" ]; then
-  python3 audio_processor.py "$AUDIO"
+  python3 audio_processor.py "$MEDIA"
 else
   echo "!! audio_processor.py not found in this folder."
   echo "   It lives in your backend per README__v2.md. Restore it, or generate"
@@ -50,7 +50,7 @@ fi
 echo "==> Staging public/ assets"
 mkdir -p "$PUBLIC_DIR"
 [ -f lyric_data.json ] && cp -f lyric_data.json "$PUBLIC_DIR/lyric_data.json"
-cp -f "$AUDIO" "$PUBLIC_DIR/$(basename "$AUDIO")"
+cp -f "$MEDIA" "$PUBLIC_DIR/$(basename "$MEDIA")"
 # Use the enhanced engine as the public index if present
 [ -f index.html ] && cp -f index.html "$PUBLIC_DIR/index.html"
 

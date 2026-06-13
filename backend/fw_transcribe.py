@@ -11,19 +11,19 @@ Usage:
 import argparse, json, os, sys
 
 
-def to_wav_16k(audio_path):
-    """Decode any audio to 16k mono wav using imageio-ffmpeg's bundled ffmpeg (fallback path)."""
+def to_wav_16k(media_path):
+    """Decode any media to 16k mono wav using imageio-ffmpeg's bundled ffmpeg (fallback path)."""
     import imageio_ffmpeg, subprocess, tempfile
     ff = imageio_ffmpeg.get_ffmpeg_exe()
     out = os.path.join(tempfile.gettempdir(), "fw_input_16k.wav")
-    subprocess.run([ff, "-y", "-i", audio_path, "-ac", "1", "-ar", "16000", out],
+    subprocess.run([ff, "-y", "-i", media_path, "-ac", "1", "-ar", "16000", out],
                    check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     return out
 
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("audio")
+    ap.add_argument("media")
     ap.add_argument("-o", "--out", default="fw_words.json")
     ap.add_argument("--model", default="small")   # tiny|base|small|medium
     ap.add_argument("--compute", default="int8")
@@ -33,13 +33,13 @@ def main():
     print(f"[fw] loading model '{args.model}' (cpu/{args.compute}) …", flush=True)
     model = WhisperModel(args.model, device="cpu", compute_type=args.compute)
 
-    src = args.audio
+    src = args.media
     try:
         segments, info = model.transcribe(src, word_timestamps=True, vad_filter=True,
                                            beam_size=5, condition_on_previous_text=True)
     except Exception as e:  # decode fallback via ffmpeg
         print(f"[fw] direct decode failed ({e}); converting with ffmpeg …", flush=True)
-        src = to_wav_16k(args.audio)
+        src = to_wav_16k(args.media)
         segments, info = model.transcribe(src, word_timestamps=True, vad_filter=True, beam_size=5)
 
     words, seg_texts = [], []

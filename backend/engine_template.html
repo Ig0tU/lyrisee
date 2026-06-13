@@ -4,6 +4,16 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Lyrisee — Kinetic Typography Engine</title>
+  <meta name="description" content="A kinetic typography engine that synchronizes lyrics to audio or video." />
+  <meta property="og:title" content="Lyrisee — Kinetic Typography Engine" />
+  <meta property="og:description" content="A kinetic typography engine that synchronizes lyrics to audio or video." />
+  <meta property="og:url" content="https://lyrisee.com/" />
+  <meta property="og:site_name" content="Lyrisee" />
+  <meta property="og:image" content="https://lyrisee.com/preview.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Lyrisee — Kinetic Typography Engine" />
+  <meta name="twitter:description" content="A kinetic typography engine that synchronizes lyrics to audio or video." />
+  <meta name="twitter:image" content="https://lyrisee.com/preview.png" />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo+Black&family=Dancing+Script:wght@700&family=Inter:wght@400;600;800;900&display=swap" rel="stylesheet">
@@ -119,10 +129,16 @@
   .ed-foot{display:flex;align-items:center;gap:10px;margin-top:14px;flex-wrap:wrap}
   .ghost-solid{font-family:'Inter';font-weight:800;font-size:14px;color:#0b0b0c;background:#F2EFE8;border:0;border-radius:9px;padding:11px 22px;cursor:pointer}
   .ghost-solid:hover{background:#fff}
+
+  .bg-plain { background: #111; }
+  .bg-generic { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%); }
+  .bg-textured { background: radial-gradient(circle at center, #2b2b2c 0%, #111 100%), url('data:image/svg+xml;utf8,<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"><filter id="noiseFilter"><feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(%23noiseFilter)" opacity="0.1"/></svg>'); background-blend-mode: overlay; }
 </style>
 </head>
 <body>
 <div id="stage">
+  <video id="bgVideo" playsinline style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity 0.5s;z-index:0;"></video>
+  <div id="bgLayer" style="position:absolute;inset:0;z-index:0;opacity:0;transition:opacity 0.5s;background-size:cover;background-position:center;"></div>
   <canvas id="three-canvas"></canvas>
   <div id="dom-layer"></div>
   <div id="embody-layer"></div>
@@ -132,6 +148,16 @@
     <div class="track" id="trackName"></div>
     <div class="spacer"></div>
     <button id="editBtn" class="mini" title="Edit lyrics / fix transcription">✎ Edit lyrics</button>
+        <div class="field">
+      <label for="bgSel">Background</label>
+      <select id="bgSel">
+        <option value="theme">Theme Default</option>
+        <option value="plain">Plain</option>
+        <option value="generic">Generic</option>
+        <option value="textured">Textured</option>
+        <option value="video" id="optVideo" style="display:none">Uploaded Video</option>
+      </select>
+    </div>
     <div class="field">
       <label for="constructSel">Construct</label>
       <select id="constructSel"></select>
@@ -158,7 +184,7 @@
     <input id="scrub" type="range" min="0" max="1000" value="0" step="1">
     <div id="time">0:00 / 0:00</div>
     <button id="audioBtn" class="mini" title="Load / change audio">♪ Audio</button>
-    <input id="audioInput2" type="file" accept="audio/*" style="display:none">
+    <input id="audioInput2" type="file" accept="audio/*,video/*" style="display:none">
     <button id="fsBtn" class="mini" title="Fullscreen (F)">⛶</button>
   </div>
 
@@ -166,8 +192,8 @@
     <h1>LYRISEE</h1>
     <div class="sub">Kinetic Typography · Any Song</div>
     <div id="ingest">
-      <div class="drop" id="drop">Drop an <b>audio file</b> here, or click to choose
-        <input id="audioInput" type="file" accept="audio/*" hidden>
+      <div class="drop" id="drop">Drop an <b>audio or video file</b> here, or click to choose
+        <input id="audioInput" type="file" accept="audio/*,video/*" hidden>
       </div>
       <div class="row">
         <button class="ghost" id="jsonBtn">+ Add lyric data (.json)</button>
@@ -176,9 +202,17 @@
       </div>
       <div id="ingestStatus"></div>
       <button id="playBtn" disabled>▶ Play</button>
+
+      <div class="row">
+        <label style="cursor:pointer; display:flex; align-items:center; gap:8px;">
+          <input type="checkbox" id="approvalModeCheck">
+          <span style="font-size:12px; color:var(--dim);">Approval Mode (line-by-line checker)</span>
+        </label>
+      </div>
+
       <div class="demo">No track handy? <a id="demoLink">Load the demo</a></div>
     </div>
-    <div id="introNote">Feed it any song. Drop the audio, then add the <b>lyric_data.json</b> your pipeline produces
+    <div id="introNote">Feed it any song. Drop the audio or video, then add the <b>lyric_data.json</b> your pipeline produces
       (words with start / end / pos, optional beats) — or auto-transcribe in the browser. The engine reads the lyrics' intent and arranges them as kinetic visual aid.</div>
   </div>
 </div>
@@ -386,7 +420,7 @@ function gpReleaseSlot(s){ GL.usedSlots.delete(s); }
 function slotY(slot,gap){ if(!slot) return 0; var k=Math.ceil(slot/2); return (slot%2?1:-1)*k*gap; }
 function initGL(font){
   GL.font=font;
-  try{ GL.renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:false}); }catch(e){ return false; }
+  try{ GL.renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true}); }catch(e){ return false; }
   GL.renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
   GL.renderer.setSize(window.innerWidth,window.innerHeight);
   GL.scene=new THREE.Scene(); GL.scene.fog=new THREE.Fog(0x161616,120,520);
@@ -646,12 +680,98 @@ function updateBeat(now){
   if(BEATS[GL.lastBeat]>now){ GL.lastBeat=-1; while(GL.lastBeat+1<BEATS.length && BEATS[GL.lastBeat+1]<=now) GL.lastBeat++; }
 }
 let lastNow=0, scrubbing=false;
+
+/* Line-by-Line Approval Mode */
+let approvalMode = false;
+let approvedLines = new Set();
+let pendingLineIdx = -1;
+const approvalModeCheck = document.getElementById('approvalModeCheck');
+const approvalModal = document.getElementById('approvalModal');
+const apprOrig = document.getElementById('apprOrig');
+const apprInput = document.getElementById('apprInput');
+const apprBtn = document.getElementById('apprBtn');
+
+approvalModeCheck.addEventListener('change', (e) => {
+  approvalMode = e.target.checked;
+  if(!approvalMode) { approvalModal.style.display='none'; }
+});
+
+function checkApproval(now) {
+  if (!approvalMode || !LINES.length) return;
+
+  // Find the next upcoming line or current line
+  let li = -1;
+  for (let k = 0; k < LINES.length; k++) {
+    if (now >= LINES[k].start - 0.2) {
+      li = k;
+    } else {
+      break;
+    }
+  }
+
+  if (li >= 0 && !approvedLines.has(li)) {
+    // Pause playback
+    if (Clock.playing) Clock.pause();
+    pendingLineIdx = li;
+
+    // Show modal
+    const ln = LINES[li];
+    const words = ln.idx.map(wi => WORDS[wi]);
+    const origText = words.map(w => w.original_text || w.text).join(' ');
+    const currText = words.map(w => w.text).join(' ');
+
+    apprOrig.textContent = origText;
+    apprInput.value = currText;
+    approvalModal.style.display = 'flex';
+  }
+}
+
+apprBtn.addEventListener('click', () => {
+  if(pendingLineIdx >= 0) {
+    const ln = LINES[pendingLineIdx];
+    const newText = apprInput.value.trim();
+    const words = ln.idx.map(wi => WORDS[wi]);
+    const oldText = words.map(w => w.text).join(' ');
+
+    if (newText !== oldText) {
+      const newTokens = newText.split(/\s+/);
+      const oldTokens = words;
+
+      oldTokens.forEach(w => {
+        if(!w.original_text) w.original_text = w.text;
+      });
+
+      if(newTokens.length === oldTokens.length) {
+         oldTokens.forEach((w, i) => w.text = newTokens[i]);
+      } else {
+         let j=0;
+         for(let i=0; i<oldTokens.length; i++){
+            oldTokens[i].text = (i < newTokens.length) ? newTokens[i] : '';
+            j=i;
+         }
+         if(newTokens.length > oldTokens.length) {
+            oldTokens[j].text += ' ' + newTokens.slice(j+1).join(' ');
+         }
+      }
+
+      if(GL.ok) { GL.active.forEach(w=>w.dispose()); GL.active.clear(); }
+      embClear();
+      if(cur&&cur.layer==='dom') buildDOMOnce();
+    }
+
+    approvedLines.add(pendingLineIdx);
+    pendingLineIdx = -1;
+    approvalModal.style.display = 'none';
+    Clock.play();
+  }
+});
+
 function frame(){
   requestAnimationFrame(frame); Clock.tick();
   const now=Clock.time; const dt=Math.min(0.05,Math.max(0,now-lastNow)); lastNow=now;
   if(!scrubbing) scrub.value=Math.round((now/Clock.duration)*1000)||0;
   timeEl.textContent=fmt(now)+' / '+fmt(Clock.duration);
-  updateBeat(now); applyArrangement(now);
+  updateBeat(now); applyArrangement(now); checkApproval(now);
   if(cur.layer==='embody'){ renderEmbodimentDOM(now); }
   else if(cur.layer==='gl' && GL.ok && GL.font){
     const LEAD=0.1,TAIL=0.18;  // tight windows -> few words coexist (no center pile-up)
@@ -669,23 +789,62 @@ function frame(){
 let lastAudioFile=null, dataReady=false;
 function setStatus(t){ ingestStatus.textContent=t||''; }
 function refreshPlay(){ playBtn.disabled=!dataReady; }
+function applyBackground(){
+  const val = document.getElementById('bgSel').value;
+  const bgLayer = document.getElementById('bgLayer');
+  const bgVideo = document.getElementById('bgVideo');
+  const domLayer = document.getElementById('dom-layer');
+
+  bgLayer.className = '';
+  bgVideo.style.opacity = '0';
+  bgLayer.style.opacity = '0';
+
+  if (val === 'plain') {
+     bgLayer.className = 'bg-plain';
+     bgLayer.style.opacity = '1';
+  } else if (val === 'generic') {
+     bgLayer.className = 'bg-generic';
+     bgLayer.style.opacity = '1';
+  } else if (val === 'textured') {
+     bgLayer.className = 'bg-textured';
+     bgLayer.style.opacity = '1';
+  } else if (val === 'video') {
+     bgVideo.style.opacity = '1';
+  }
+}
+
 function attachAudio(file){
-  lastAudioFile=file; const a=new Audio(); a.src=URL.createObjectURL(file); a.preload='auto';
-  a.addEventListener('loadedmetadata',()=>{ const wasPlaying=Clock.playing; const t=Clock.time; Clock.audio=a;
-    try{a.currentTime=Math.min(t,a.duration||t);}catch(e){} if(wasPlaying)a.play().catch(()=>{}); });
+  if(Clock.audio) { Clock.audio.pause(); Clock.audio.src=''; Clock.audio=null; }
+  lastAudioFile=file;
+  const isVideo = file.type.startsWith('video/');
+  const media = isVideo ? document.getElementById('bgVideo') : new Audio();
+  media.src=URL.createObjectURL(file); media.preload='auto';
+  if(isVideo) {
+      document.getElementById('optVideo').style.display='block';
+      document.getElementById('bgSel').value='video';
+      applyBackground();
+  } else {
+      document.getElementById('optVideo').style.display='none';
+      if (document.getElementById('bgSel').value === 'video') {
+          document.getElementById('bgSel').value = 'theme';
+          applyBackground();
+      }
+  }
+  media.addEventListener('loadedmetadata',()=>{ const wasPlaying=Clock.playing; const t=Clock.time; Clock.audio=media;
+    try{media.currentTime=Math.min(t,media.duration||t);}catch(e){} if(wasPlaying)media.play().catch(()=>{}); });
   if(!TRACK_NAME){ TRACK_NAME=file.name; if(trackNameEl) trackNameEl.textContent=TRACK_NAME; }
   audioBtn.textContent='♪ '+(file.name.length>16?file.name.slice(0,15)+'…':file.name);
 }
 function onAudioChosen(file){ if(!file) return; attachAudio(file);
   dropZone.innerHTML='Audio: <b>'+file.name+'</b>';
-  setStatus(dataReady?'Audio attached. Ready to play.':'Audio loaded. Now add a lyric_data.json, or auto-transcribe.'); }
+  setStatus(dataReady?'Media attached. Ready to play.':'Media loaded. Now add a lyric_data.json, or auto-transcribe.'); }
 function onJSONChosen(file){ if(!file) return; const r=new FileReader();
   r.onload=()=>{ try{ const d=JSON.parse(r.result); const n=loadData(d, TRACK_NAME||file.name.replace(/\.[^.]+$/,'')); if(!n) throw new Error('no words');
       dataReady=true; setStatus('Loaded '+n+' words · '+LINES.length+' lines'+(BEATS.length?' · '+BEATS.length+' beats':'')+'. Ready.'); refreshPlay(); }
     catch(e){ setStatus('That isn\'t a lyric_data file — it needs a "words" array of {text,start,end,pos}.'); } };
   r.readAsText(file); }
 async function autoTranscribe(){
-  if(!lastAudioFile){ setStatus('Load an audio file first.'); return; }
+  if(!lastAudioFile){ setStatus('Load an audio or video file first.'); return; }
   xscribeBtn.disabled=true; setStatus('Loading the in-browser speech model… first run downloads a small model and can take a minute.');
   try{
     const mod=await import('https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2');
@@ -766,6 +925,7 @@ function edDownloadFn(){
 function start(){ if(!dataReady) return; intro.style.opacity='0'; setTimeout(()=>intro.style.display='none',600); stage.classList.add('playing'); if(!isFinite(Q_T)) Clock.seek(0); Clock.play(); }
 function wireUI(){
   populateConstructs(true);
+  document.getElementById('bgSel').addEventListener('change', applyBackground);
   constructSel.addEventListener('change',()=>{autoArrange=false;setConstruct(constructSel.value);});
   ppBtn.addEventListener('click',()=>Clock.toggle());
   scrub.addEventListener('input',()=>{scrubbing=true;Clock.seek(scrub.value/1000*Clock.duration);});
@@ -825,5 +985,17 @@ function boot(){
 boot();
 })();
 </script>
+
+<div id="approvalModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:9999; flex-direction:column; align-items:center; justify-content:center;">
+  <div style="background:var(--panel); border:1px solid var(--line); padding:24px; border-radius:12px; width:90%; max-width:600px;">
+    <h3 style="margin-top:0; font-size:16px;">Approve Line</h3>
+    <p style="font-size:12px; color:var(--dim); margin-bottom:12px;">Review the transcribed line. Edit if necessary, then approve to continue playing. The original will be kept for comparison.</p>
+    <div style="margin-bottom:8px; font-size:11px; color:var(--dim);">Original: <span id="apprOrig" style="color:var(--ink);"></span></div>
+    <textarea id="apprInput" style="width:100%; height:80px; background:#000; color:var(--ink); border:1px solid var(--line); border-radius:6px; padding:12px; font-family:inherit; font-size:16px; margin-bottom:16px;"></textarea>
+    <div style="display:flex; justify-content:flex-end; gap:12px;">
+      <button id="apprBtn" class="ghost" style="border-color:#4CAF50; color:#4CAF50;">Approve & Continue</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>

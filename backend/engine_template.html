@@ -932,7 +932,7 @@ function wireUI(){
   scrub.addEventListener('change',()=>{scrubbing=false;});
   playBtn.addEventListener('click',start);
   // ingest
-  dropZone.addEventListener('click',()=>audioInput.click());
+  dropZone.addEventListener('click',e=>{ if(e.target!==audioInput) audioInput.click(); });
   dropZone.addEventListener('dragover',e=>{e.preventDefault();dropZone.classList.add('over');});
   dropZone.addEventListener('dragleave',()=>dropZone.classList.remove('over'));
   dropZone.addEventListener('drop',e=>{e.preventDefault();dropZone.classList.remove('over');const f=e.dataTransfer.files[0];

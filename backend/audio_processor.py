@@ -59,7 +59,11 @@ def transcribe_words(audio_path: str, model_size: str = "base"):
     print(f"[asr] loading stable-ts model '{model_size}' …")
     model = stable_whisper.load_model(model_size)
     print("[asr] transcribing (word timestamps) …")
-    result = model.transcribe(audio_path, vad=True, regroup=True)
+    try:
+        result = model.transcribe(audio_path, vad=True, regroup=True)
+    except Exception as e:
+        print(f"[asr] VAD failed ({e}); retrying without VAD...")
+        result = model.transcribe(audio_path, vad=False, regroup=True)
     words = []
     for seg in result.segments:
         for w in getattr(seg, "words", []) or []:

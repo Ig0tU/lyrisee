@@ -7,4 +7,6 @@ numpy
 werkzeug
 torch
 moviepy
-tqdm
+tqdmfastapi
+uvicorn
+python-multipart

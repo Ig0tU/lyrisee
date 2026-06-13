@@ -199,6 +199,10 @@
       <div class="row">
         <button class="ghost" id="jsonBtn">+ Add lyric data (.json)</button>
         <button class="ghost" id="xscribeBtn">Auto-transcribe in browser</button>
+      </div>
+      <div class="row" style="margin-top:8px;">
+        <input type="text" id="apiUrlInput" placeholder="HuggingFace Space URL (e.g. https://your-space.hf.space/process)" style="flex:1; padding:6px; font-size:12px; background:#111; color:var(--ink); border:1px solid var(--line); border-radius:4px;">
+        <button class="ghost" id="cloudBtn" style="white-space:nowrap;">Run Cloud AI</button>
         <input id="jsonInput" type="file" accept=".json,application/json" hidden>
       </div>
       <div id="ingestStatus"></div>
@@ -855,6 +859,37 @@ function onJSONChosen(file){ if(!file) return; const r=new FileReader();
       dataReady=true; setStatus('Loaded '+n+' words · '+LINES.length+' lines'+(BEATS.length?' · '+BEATS.length+' beats':'')+'. Ready.'); refreshPlay(); }
     catch(e){ setStatus('That isn\'t a lyric_data file — it needs a "words" array of {text,start,end,pos}.'); } };
   r.readAsText(file); }
+
+async function runCloudAI() {
+  const apiUrl = document.getElementById('apiUrlInput').value.trim();
+  if(!apiUrl) { setStatus('Enter a HuggingFace API URL first.'); return; }
+  if(!lastAudioFile) { setStatus('Load an audio or video file first.'); return; }
+
+  const btn = document.getElementById('cloudBtn');
+  btn.disabled = true;
+  setStatus('Uploading media to Cloud API... This may take a few minutes for separation and AI translation.');
+
+  const formData = new FormData();
+  formData.append('file', lastAudioFile);
+
+  try {
+    const res = await fetch(apiUrl, { method: 'POST', body: formData });
+    if(!res.ok) throw new Error('API returned ' + res.status);
+    const data = await res.json();
+    if(data.error) throw new Error(data.error);
+
+    const n = loadData(data, TRACK_NAME || lastAudioFile.name.replace(/\.[^.]+$/, ''));
+    dataReady = true;
+    setStatus('Cloud processing complete! Loaded ' + n + ' words. Ready.');
+    refreshPlay();
+  } catch(e) {
+    console.error(e);
+    setStatus('Cloud processing failed: ' + e.message);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
 async function autoTranscribe(){
   if(!lastAudioFile){ setStatus('Load an audio or video file first.'); return; }
   xscribeBtn.disabled=true; setStatus('Loading the in-browser speech model… first run downloads a small model and can take a minute.');
@@ -954,6 +989,7 @@ function wireUI(){
   jsonBtn.addEventListener('click',()=>jsonInput.click());
   jsonInput.addEventListener('change',e=>onJSONChosen(e.target.files[0]));
   xscribeBtn.addEventListener('click',autoTranscribe);
+  document.getElementById('cloudBtn').addEventListener('click',runCloudAI);
   editBtn.addEventListener('click',edOpen);
   edClose.addEventListener('click',edCloseFn);
   edApply.addEventListener('click',edApplyFn);

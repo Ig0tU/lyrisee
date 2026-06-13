@@ -192,9 +192,9 @@
     <h1>LYRISEE</h1>
     <div class="sub">Kinetic Typography · Any Song</div>
     <div id="ingest">
-      <div class="drop" id="drop">Drop an <b>audio or video file</b> here, or click to choose
-        <input id="audioInput" type="file" accept="audio/*,video/*" hidden>
-      </div>
+                  <label class="drop" id="drop" style="display:block; cursor:pointer;">Drop an <b>audio or video file</b> here, or click to choose
+        <input id="audioInput" type="file" accept="audio/*,video/*" style="opacity:0; position:absolute; z-index:-1;">
+      </label>
       <div class="row">
         <button class="ghost" id="jsonBtn">+ Add lyric data (.json)</button>
         <button class="ghost" id="xscribeBtn">Auto-transcribe in browser</button>
@@ -943,7 +943,7 @@ function wireUI(){
   scrub.addEventListener('change',()=>{scrubbing=false;});
   playBtn.addEventListener('click',start);
   // ingest
-  dropZone.addEventListener('click',e=>{ if(e.target!==audioInput) audioInput.click(); });
+
   dropZone.addEventListener('dragover',e=>{e.preventDefault();dropZone.classList.add('over');});
   dropZone.addEventListener('dragleave',()=>dropZone.classList.remove('over'));
   dropZone.addEventListener('drop',e=>{e.preventDefault();dropZone.classList.remove('over');const f=e.dataTransfer.files[0];

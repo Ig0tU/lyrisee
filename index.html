@@ -84,6 +84,10 @@
   #playBtn:hover:not(:disabled){transform:translateY(-2px);background:#fff;box-shadow:0 14px 40px rgba(0,0,0,.6)}
   #playBtn:disabled{opacity:.4;cursor:not-allowed}
   .demo{font-size:12.5px;color:var(--faint)}
+  .tog-track{display:inline-flex;align-items:center;width:36px;height:20px;border-radius:10px;background:#2a2a2b;border:1px solid var(--line);transition:background .2s;flex-shrink:0}
+  .tog-track.on{background:#4a9eff;border-color:#4a9eff}
+  .tog-thumb{width:14px;height:14px;border-radius:50%;background:#fff;margin-left:2px;transition:margin-left .2s;flex-shrink:0}
+  .tog-track.on .tog-thumb{margin-left:18px}
   .demo a{color:var(--dim);text-decoration:underline;cursor:pointer}
   .demo a:hover{color:var(--ink)}
   #introNote{margin-top:24px;font-size:11.5px;color:var(--faint);max-width:520px;line-height:1.6}
@@ -208,21 +212,28 @@
       <div class="drop" id="drop">Drop an <b>audio or video file</b> here, or click to choose
         <input id="audioInput" type="file" accept="audio/*,video/*" hidden>
       </div>
-      <div class="row">
+      <div class="row" style="justify-content:space-between;align-items:center;gap:12px;">
         <button class="ghost" id="jsonBtn">+ Add lyric data (.json)</button>
-        <button class="ghost" id="xscribeBtn">Auto-transcribe in browser</button>
-      </div>
-      <div class="row" style="margin-top:8px;">
-        <input type="text" id="apiUrlInput" value="https://acecalisto3-lyrisee.hf.space/process" placeholder="HuggingFace Space URL (e.g. https://your-space.hf.space/process)" style="flex:1; padding:6px; font-size:12px; background:#111; color:var(--ink); border:1px solid var(--line); border-radius:4px;">
-        <select id="aiProviderSel" style="padding:6px; font-size:12px; background:#111; color:var(--ink); border:1px solid var(--line); border-radius:4px;">
-            <option value="gemini">Gemini (Google)</option>
-            <option value="ollama">Ollama Cloud (DeepSeek)</option>
-            <option value="anthropic">Claude (Anthropic)</option>
-            <option value="openai">ChatGPT (OpenAI)</option>
-        </select>
-        <button class="ghost" id="cloudBtn" style="white-space:nowrap;">Run Cloud AI</button>
         <input id="jsonInput" type="file" accept=".json,application/json" hidden>
+        <label id="cloudToggleLabel" style="display:flex;align-items:center;gap:7px;cursor:pointer;user-select:none;">
+          <span style="font-size:12px;color:var(--dim);">Browser</span>
+          <span class="tog-track" id="cloudToggleTrack">
+            <span class="tog-thumb"></span>
+          </span>
+          <span style="font-size:12px;color:var(--ink);font-weight:600;">Cloud AI</span>
+          <input type="checkbox" id="cloudToggle" checked style="display:none;">
+        </label>
       </div>
+      <div id="cloudControls" class="row" style="margin-top:8px;">
+        <input type="text" id="apiUrlInput" value="https://acecalisto3-lyrisee.hf.space/process" placeholder="HuggingFace Space URL" style="flex:1;padding:6px;font-size:12px;background:#111;color:var(--ink);border:1px solid var(--line);border-radius:4px;">
+        <select id="aiProviderSel" style="padding:6px;font-size:12px;background:#111;color:var(--ink);border:1px solid var(--line);border-radius:4px;">
+          <option value="gemini">Gemini (Google)</option>
+          <option value="ollama">Ollama Cloud (DeepSeek)</option>
+          <option value="anthropic">Claude (Anthropic)</option>
+          <option value="openai">ChatGPT (OpenAI)</option>
+        </select>
+      </div>
+      <button class="ghost" id="processBtn" style="margin-top:8px;width:100%;justify-content:center;">⚡ Run Cloud AI</button>
       <div id="ingestStatus"></div>
       <button id="playBtn" disabled>▶ Play</button>
 
@@ -290,7 +301,7 @@ const stage=document.getElementById('stage'), canvas=document.getElementById('th
   dropZone=document.getElementById('drop'), audioInput=document.getElementById('audioInput'),
   audioInput2=document.getElementById('audioInput2'), audioBtn=document.getElementById('audioBtn'),
   jsonInput=document.getElementById('jsonInput'), jsonBtn=document.getElementById('jsonBtn'),
-  xscribeBtn=document.getElementById('xscribeBtn'), demoLink=document.getElementById('demoLink'),
+  demoLink=document.getElementById('demoLink'),
   ingestStatus=document.getElementById('ingestStatus'),
   editor=document.getElementById('editor'), edList=document.getElementById('edList'),
   editBtn=document.getElementById('editBtn'), edClose=document.getElementById('edClose'),
@@ -900,9 +911,9 @@ async function runCloudAI() {
 
   if(!lastAudioFile) { setStatus('Load an audio or video file first.'); return; }
 
-  const btn = document.getElementById('cloudBtn');
+  const btn = document.getElementById('processBtn');
   btn.disabled = true;
-  setStatus('Uploading media to Cloud API... This may take a few minutes for separation and AI translation.');
+  setStatus('Uploading to Cloud AI… this may take a few minutes.');
 
   const provider = document.getElementById('aiProviderSel').value;
   const formData = new FormData();
@@ -929,7 +940,7 @@ async function runCloudAI() {
 
 async function autoTranscribe(){
   if(!lastAudioFile){ setStatus('Load an audio or video file first.'); return; }
-  xscribeBtn.disabled=true; setStatus('Loading the in-browser speech model… first run downloads a small model and can take a minute.');
+  document.getElementById('processBtn').disabled=true; setStatus('Loading the in-browser speech model… first run downloads ~40 MB.');
   try{
     const mod=await import('https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2');
     mod.env.allowLocalModels=false;
@@ -952,7 +963,7 @@ async function autoTranscribe(){
     const n=loadData({words,beats:[]}, TRACK_NAME||lastAudioFile.name.replace(/\.[^.]+$/,''));
     dataReady=true; setStatus('Transcribed '+n+' words · '+LINES.length+' lines. (Tip: your pipeline\'s lyric_data.json will be more accurate.)'); refreshPlay();
   }catch(e){ console.error(e); setStatus('In-browser transcription couldn\'t run here (needs WebGPU + model download). Drop your pipeline\'s lyric_data.json instead.'); }
-  finally{ xscribeBtn.disabled=false; }
+  finally{ document.getElementById('processBtn').disabled=false; }
 }
 
 /* ============================================================================
@@ -1026,8 +1037,24 @@ function wireUI(){
   audioInput2.addEventListener('change',e=>onAudioChosen(e.target.files[0]));
   jsonBtn.addEventListener('click',()=>jsonInput.click());
   jsonInput.addEventListener('change',e=>onJSONChosen(e.target.files[0]));
-  xscribeBtn.addEventListener('click',autoTranscribe);
-  document.getElementById('cloudBtn').addEventListener('click',runCloudAI);
+
+  // Cloud/Browser toggle
+  const cloudToggle=document.getElementById('cloudToggle');
+  const cloudToggleTrack=document.getElementById('cloudToggleTrack');
+  const cloudControls=document.getElementById('cloudControls');
+  const processBtn=document.getElementById('processBtn');
+  function applyToggle(){
+    const on=cloudToggle.checked;
+    cloudToggleTrack.classList.toggle('on',on);
+    cloudControls.style.display=on?'':'none';
+    processBtn.textContent=on?'⚡ Run Cloud AI':'🎤 Transcribe in Browser';
+  }
+  applyToggle();
+  cloudToggle.addEventListener('change',applyToggle);
+  document.getElementById('cloudToggleLabel').addEventListener('click',()=>{
+    cloudToggle.checked=!cloudToggle.checked; applyToggle();
+  });
+  processBtn.addEventListener('click',()=>{ if(cloudToggle.checked) runCloudAI(); else autoTranscribe(); });
   editBtn.addEventListener('click',edOpen);
   edClose.addEventListener('click',edCloseFn);
   edApply.addEventListener('click',edApplyFn);

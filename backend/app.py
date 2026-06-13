@@ -1,6 +1,6 @@
-from fastapi import FastAPI, UploadFile, File, BackgroundTasks
+from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
 import os
 import tempfile
 import json
@@ -9,6 +9,7 @@ import shutil
 
 app = FastAPI(title="Lyrisee Processing API")
 
+# This CORS block is what allows Vercel to talk to Hugging Face
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -16,6 +17,18 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.get("/")
+def serve_index_or_health():
+    # If index.html is in the folder above, serve it (for Hugging Face)
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    index_path = os.path.join(script_dir, "../index.html") 
+    
+    if os.path.exists(index_path):
+        return FileResponse(index_path)
+    
+    # Fallback health check if index.html isn't there
+    return {"status": "ok", "message": "Lyrisee Backend API is running."}
 
 @app.post("/process")
 async def process_media(file: UploadFile = File(...)):
@@ -30,8 +43,7 @@ async def process_media(file: UploadFile = File(...)):
     out_json = temp_path + "_lyrics.json"
 
     try:
-        # Run the audio processor synchronously
-        # We assume audio_processor.py is in the same directory
+        # Run your exact original audio processor synchronously
         script_dir = os.path.dirname(os.path.abspath(__file__))
         processor_path = os.path.join(script_dir, "audio_processor.py")
 
@@ -58,7 +70,3 @@ async def process_media(file: UploadFile = File(...)):
             os.remove(temp_path)
         if os.path.exists(out_json):
             os.remove(out_json)
-
-@app.get("/")
-def health_check():
-    return {"status": "ok", "message": "Lyrisee Backend API is running."}

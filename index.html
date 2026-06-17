@@ -205,6 +205,11 @@
     <button id="ppBtn" title="Play/Pause (Space)">▶</button>
     <input id="scrub" type="range" min="0" max="1000" value="0" step="1">
     <div id="time">0:00 / 0:00</div>
+    <div style="display:flex; align-items:center; gap:6px;">
+      <span style="font-size:11px; color:var(--dim);">Offset:</span>
+      <input id="offsetSlider" type="range" min="-1000" max="1000" value="-3" step="1" style="width:60px;">
+      <span id="offsetVal" style="font-size:11px; color:var(--dim); font-variant-numeric:tabular-nums; min-width:36px;">-3ms</span>
+    </div>
     <button id="audioBtn" class="mini" title="Load / change audio">♪ Audio</button>
     <input id="audioInput2" type="file" accept="audio/*,video/*" style="display:none">
     <button id="fsBtn" class="mini" title="Fullscreen (F)">⛶</button>
@@ -970,18 +975,19 @@ apprBtn.addEventListener('click', () => {
 function frame(){
   requestAnimationFrame(frame); Clock.tick();
   const now=Clock.time; const dt=Math.min(0.05,Math.max(0,now-lastNow)); lastNow=now;
+  const effNow = now - (window.lyricOffsetMs / 1000);
   if(!scrubbing) scrub.value=Math.round((now/Clock.duration)*1000)||0;
   timeEl.textContent=fmt(now)+' / '+fmt(Clock.duration);
-  updateBeat(now); applyArrangement(now); checkApproval(now);
-  if(cur.layer==='embody'){ renderEmbodimentDOM(now); }
+  updateBeat(effNow); applyArrangement(effNow); checkApproval(effNow);
+  if(cur.layer==='embody'){ renderEmbodimentDOM(effNow); }
   else if(cur.layer==='gl' && GL.ok && GL.font){
     const LEAD=0.1,TAIL=0.18;  // tight windows -> few words coexist (no center pile-up)
-    for(let i=0;i<WORDS.length;i++){ const w=WORDS[i]; const on=now>=w.start-LEAD&&now<=w.end+TAIL;
+    for(let i=0;i<WORDS.length;i++){ const w=WORDS[i]; const on=effNow>=w.start-LEAD&&effNow<=w.end+TAIL;
       if(on&&!GL.active.has(i)) GL.active.set(i,new GLWord(i,curTheme));
       else if(!on&&GL.active.has(i)){GL.active.get(i).dispose();GL.active.delete(i);} }
-    GL.active.forEach(w=>w.update(now,dt));
+    GL.active.forEach(w=>w.update(effNow,dt));
     GL.camera.position.z=260-GL.beatPulse*18; GL.camera.lookAt(0,0,0); GL.renderer.render(GL.scene,GL.camera);
-  } else if(cur.layer==='dom'){ updateDOM(now); }
+  } else if(cur.layer==='dom'){ updateDOM(effNow); }
 }
 
 /* ============================================================================
@@ -1287,6 +1293,14 @@ function wireUI(){
   ppBtn.addEventListener('click',()=>Clock.toggle());
   scrub.addEventListener('input',()=>{scrubbing=true;Clock.seek(scrub.value/1000*Clock.duration);});
   scrub.addEventListener('change',()=>{scrubbing=false;});
+
+  const offsetSlider = document.getElementById('offsetSlider');
+  const offsetVal = document.getElementById('offsetVal');
+  offsetSlider.addEventListener('input', () => {
+    window.lyricOffsetMs = parseInt(offsetSlider.value, 10);
+    offsetVal.textContent = window.lyricOffsetMs + 'ms';
+  });
+
   playBtn.addEventListener('click',start);
   // ingest
 

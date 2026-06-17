@@ -205,6 +205,11 @@
     <button id="ppBtn" title="Play/Pause (Space)">▶</button>
     <input id="scrub" type="range" min="0" max="1000" value="0" step="1">
     <div id="time">0:00 / 0:00</div>
+    <div style="display:flex; align-items:center; gap:6px;">
+      <span style="font-size:11px; color:var(--dim);">Offset:</span>
+      <input id="offsetSlider" type="range" min="-1000" max="1000" value="-3" step="1" style="width:60px;">
+      <span id="offsetVal" style="font-size:11px; color:var(--dim); font-variant-numeric:tabular-nums; min-width:36px;">-3ms</span>
+    </div>
     <button id="audioBtn" class="mini" title="Load / change audio">♪ Audio</button>
     <input id="audioInput2" type="file" accept="audio/*,video/*" style="display:none">
     <button id="fsBtn" class="mini" title="Fullscreen (F)">⛶</button>
@@ -218,8 +223,8 @@
         <input id="audioInput" type="file" accept="audio/*,video/*" hidden>
       </div>
       <div class="row" style="justify-content:space-between;align-items:center;gap:12px;">
-        <button class="ghost" id="jsonBtn">+ Add lyric data (.json)</button>
-        <input id="jsonInput" type="file" accept=".json,application/json" hidden>
+        <button class="ghost" id="jsonBtn">+ Add lyric data (.json / .txt)</button>
+        <input id="jsonInput" type="file" accept=".json,application/json,.txt,text/plain" hidden>
         <label id="cloudToggleLabel" style="display:flex;align-items:center;gap:7px;cursor:pointer;user-select:none;">
           <span style="font-size:12px;color:var(--dim);">Browser</span>
           <span class="tog-track" id="cloudToggleTrack">
@@ -314,6 +319,93 @@ const stage=document.getElementById('stage'), canvas=document.getElementById('th
   edApply=document.getElementById('edApply'), edDownload=document.getElementById('edDownload'),
   edAdd=document.getElementById('edAdd');
 
+window.rawLyricsText = null;
+window.lyricOffsetMs = -3;
+
+function alignLyrics(transcribedWords, rawText) {
+  // Simple Levenshtein alignment between transcribed words and raw text words
+  const rawLines = rawText.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  const rawWords = [];
+  rawLines.forEach(line => {
+    const toks = line.split(/\s+/).filter(Boolean);
+    toks.forEach((tok, idx) => {
+      rawWords.push({
+        text: tok,
+        isLineBreak: idx === toks.length - 1
+      });
+    });
+  });
+
+  if (!rawWords.length || !transcribedWords.length) return transcribedWords;
+
+  function cleanAlign(t) { return (t || '').toLowerCase().replace(/[^a-z0-9]/g, ''); }
+
+  const n = transcribedWords.length;
+  const m = rawWords.length;
+  const dp = Array.from({length: n + 1}, () => new Int32Array(m + 1));
+
+  for (let i = 0; i <= n; i++) dp[i][0] = i * 2;
+  for (let j = 0; j <= m; j++) dp[0][j] = j * 2;
+
+  for (let i = 1; i <= n; i++) {
+    const tw = cleanAlign(transcribedWords[i - 1].text);
+    for (let j = 1; j <= m; j++) {
+      const rw = cleanAlign(rawWords[j - 1].text);
+      let cost = 2; // substitution
+      if (tw === rw) cost = 0;
+      else if (tw.includes(rw) || rw.includes(tw)) cost = 1;
+
+      dp[i][j] = Math.min(
+        dp[i - 1][j - 1] + cost,
+        dp[i - 1][j] + 2, // deletion
+        dp[i][j - 1] + 2  // insertion
+      );
+    }
+  }
+
+  // Backtrack
+  let i = n, j = m;
+  const alignment = []; // mapping from transcribed idx to raw word
+  while (i > 0 && j > 0) {
+    const cost = dp[i][j];
+    const tw = cleanAlign(transcribedWords[i - 1].text);
+    const rw = cleanAlign(rawWords[j - 1].text);
+
+    let matchCost = 2;
+    if (tw === rw) matchCost = 0;
+    else if (tw.includes(rw) || rw.includes(tw)) matchCost = 1;
+
+    if (cost === dp[i - 1][j - 1] + matchCost) {
+      alignment[i - 1] = rawWords[j - 1];
+      i--; j--;
+    } else if (cost === dp[i - 1][j] + 2) {
+      alignment[i - 1] = null;
+      i--;
+    } else {
+      j--;
+    }
+  }
+
+  // Apply ground truth text and line breaks to transcribed words
+  const alignedWords = transcribedWords.map((tw, idx) => {
+    const aw = { ...tw };
+    aw.manual_line = true; // Flag for buildLines
+    const rw = alignment[idx];
+    if (rw) {
+      aw.text = rw.text;
+      aw.line_break = rw.isLineBreak;
+    } else {
+      aw.line_break = false; // Orphan words don't get line breaks
+    }
+    return aw;
+  });
+
+  // Ensure last word has a line break if it's the end of the song
+  if (alignedWords.length) alignedWords[alignedWords.length - 1].line_break = true;
+
+  return alignedWords;
+}
+
 /* ============================================================================
    PART 1 — LINGUISTIC INTELLIGENCE  (general; works on any lyrics)
    ========================================================================== */
@@ -355,12 +447,23 @@ function quickPOS(text){const w=clean(text).replace(/'.*$/,''); if(!w)return 'X'
 /* Line segmentation from timing gaps + sentence punctuation */
 function buildLines(words){
   const lines=[]; let cur=[]; const GAP=0.62, MAXW=9;
+
+  // Check if we have manual line markers
+  const hasManualLines = words.some(w => w.manual_line);
+
   for(let i=0;i<words.length;i++){
     cur.push(i); const next=words[i+1];
-    const gap=next?(next.start-words[i].end):999;
-    const endsSentence=/[.!?…]$/.test(words[i].text);
-    if(!next||gap>GAP||cur.length>=MAXW||(endsSentence&&cur.length>=3)){
-      lines.push({idx:cur.slice(),start:words[cur[0]].start,end:words[cur[cur.length-1]].end}); cur=[];
+
+    if (hasManualLines) {
+      if (!next || words[i].line_break) {
+        lines.push({idx:cur.slice(),start:words[cur[0]].start,end:words[cur[cur.length-1]].end}); cur=[];
+      }
+    } else {
+      const gap=next?(next.start-words[i].end):999;
+      const endsSentence=/[.!?…]$/.test(words[i].text);
+      if(!next||gap>GAP||cur.length>=MAXW||(endsSentence&&cur.length>=3)){
+        lines.push({idx:cur.slice(),start:words[cur[0]].start,end:words[cur[cur.length-1]].end}); cur=[];
+      }
     }
   }
   return lines;
@@ -570,7 +673,14 @@ function metaForLine(li){
 function sceneForLine(li){ if(!SCENES.length) return null; const ls=LINES[li].start; let best=null,bd=1e9;
   for(const s of SCENES){ const d=Math.abs((s.start||0)-ls); if(d<bd){bd=d;best=s;} } return (best&&bd<1.0)?best:null; }
 function embClear(){ if(embodyLayer){ embodyLayer.innerHTML=''; } EMB.spans=[]; EMB.lineIdx=-1; EMB.sym=null; EMB.fig=null; EMB.scene=null; }
-function embLayoutPx(spans, metaphor){
+
+// Simple pseudo-random generator
+function pseudoRandom(seed) {
+  let x = Math.sin(seed++) * 10000;
+  return x - Math.floor(x);
+}
+
+function embLayoutPx(spans, metaphor, lineIdx = 0){
   const n=spans.length, vw=window.innerWidth, vh=window.innerHeight;
   // use visually-scaled widths so layout reflects actual rendered size
   const widths=spans.map(s=>(s.w||40)*(s.emS||1)*0.8);
@@ -584,10 +694,21 @@ function embLayoutPx(spans, metaphor){
       rows[rows.length-1].push(i); w+=widths[i]+gap;
     }
     const totalH=(rows.length-1)*lineH;
+
+    // Line-level structural shift based on lineIdx (so syntax norm is kept, but placed differently)
+    const lineShiftX = (pseudoRandom(lineIdx * 13) - 0.5) * vw * 0.3;
+    const lineShiftY = (pseudoRandom(lineIdx * 17) - 0.5) * vh * 0.3;
+
     rows.forEach((row,ri)=>{
       let rw=row.reduce((a,i)=>a+widths[i],0)+gap*(row.length-1), x=-rw/2;
       const y=-totalH/2+ri*lineH;
-      row.forEach(i=>{ pos[i]={x:x+widths[i]/2, y:y}; x+=widths[i]+gap; });
+      row.forEach(i=>{
+        // Individual subtle word jitter
+        const jitterX = (pseudoRandom(lineIdx * 100 + i) - 0.5) * gap * 0.8;
+        const jitterY = (pseudoRandom(lineIdx * 200 + i) - 0.5) * lineH * 0.3;
+        pos[i]={x:x+widths[i]/2 + lineShiftX + jitterX, y:y + lineShiftY + jitterY};
+        x+=widths[i]+gap;
+      });
     });
   }
 
@@ -644,7 +765,7 @@ function embBuild(li){
   // AI pipeline (METAS/SCENES) owns metaphor layouts; browser-only mode stays clean row
   const hasAI = METAS.length > 0 || SCENES.length > 0;
   const metaphor = hasAI ? ((scene&&scene.metaphor)||metaForLine(li)) : 'row';
-  const targets=embLayoutPx(spans, metaphor);
+  const targets=embLayoutPx(spans, metaphor, li);
   // scene rotations: e.g. "back" -> 90deg (a figure turning away); cagebars -> all words become vertical bars
   if(scene&&scene.rotate){ spans.forEach(s=>{ const k=clean(WORDS[s.wi].text); for(const rk in scene.rotate){ if(k===clean(rk)) s.rot=scene.rotate[rk]; } }); }
   if(metaphor==='cagebars'){ spans.forEach(s=>{ if(!s.rot) s.rot=90; }); }
@@ -855,18 +976,19 @@ apprBtn.addEventListener('click', () => {
 function frame(){
   requestAnimationFrame(frame); Clock.tick();
   const now=Clock.time; const dt=Math.min(0.05,Math.max(0,now-lastNow)); lastNow=now;
+  const effNow = now - (window.lyricOffsetMs / 1000);
   if(!scrubbing) scrub.value=Math.round((now/Clock.duration)*1000)||0;
   timeEl.textContent=fmt(now)+' / '+fmt(Clock.duration);
-  updateBeat(now); applyArrangement(now); checkApproval(now);
-  if(cur.layer==='embody'){ renderEmbodimentDOM(now); }
+  updateBeat(effNow); applyArrangement(effNow); checkApproval(effNow);
+  if(cur.layer==='embody'){ renderEmbodimentDOM(effNow); }
   else if(cur.layer==='gl' && GL.ok && GL.font){
     const LEAD=0.1,TAIL=0.18;  // tight windows -> few words coexist (no center pile-up)
-    for(let i=0;i<WORDS.length;i++){ const w=WORDS[i]; const on=now>=w.start-LEAD&&now<=w.end+TAIL;
+    for(let i=0;i<WORDS.length;i++){ const w=WORDS[i]; const on=effNow>=w.start-LEAD&&effNow<=w.end+TAIL;
       if(on&&!GL.active.has(i)) GL.active.set(i,new GLWord(i,curTheme));
       else if(!on&&GL.active.has(i)){GL.active.get(i).dispose();GL.active.delete(i);} }
-    GL.active.forEach(w=>w.update(now,dt));
+    GL.active.forEach(w=>w.update(effNow,dt));
     GL.camera.position.z=260-GL.beatPulse*18; GL.camera.lookAt(0,0,0); GL.renderer.render(GL.scene,GL.camera);
-  } else if(cur.layer==='dom'){ updateDOM(now); }
+  } else if(cur.layer==='dom'){ updateDOM(effNow); }
 }
 
 /* ============================================================================
@@ -944,11 +1066,33 @@ function attachAudio(file){
 function onAudioChosen(file){ if(!file) return; attachAudio(file);
   dropZone.innerHTML='Audio: <b>'+file.name+'</b>';
   setStatus(dataReady?'Media attached. Ready to play.':'Media loaded. Now add a lyric_data.json, or auto-transcribe.'); }
-function onJSONChosen(file){ if(!file) return; const r=new FileReader();
-  r.onload=()=>{ try{ const d=JSON.parse(r.result); const n=loadData(d, TRACK_NAME||file.name.replace(/\.[^.]+$/,'')); if(!n) throw new Error('no words');
-      dataReady=true; setStatus('Loaded '+n+' words · '+LINES.length+' lines'+(BEATS.length?' · '+BEATS.length+' beats':'')+'. Ready.'); refreshPlay(); }
-    catch(e){ setStatus('That isn\'t a lyric_data file — it needs a "words" array of {text,start,end,pos}.'); } };
-  r.readAsText(file); }
+function onJSONChosen(file){
+  if(!file) return;
+  const r=new FileReader();
+  r.onload=()=>{
+    if (file.name.endsWith('.txt')) {
+      window.rawLyricsText = r.result;
+      if (dataReady && WORDS.length) {
+         WORDS = alignLyrics(WORDS, window.rawLyricsText);
+         loadData({words: WORDS, beats: BEATS, arrangement: ARRANGEMENT, metaphors: METAS, scenes: SCENES, concept: CONCEPT, rhyme_palette: RHYME_PAL}, TRACK_NAME);
+         setStatus('Raw text aligned! ' + WORDS.length + ' words · ' + LINES.length + ' lines. Ready.');
+      } else {
+         setStatus('Raw text loaded. Now add audio and run transcription.');
+      }
+      return;
+    }
+
+    try{
+      const d=JSON.parse(r.result);
+      if (window.rawLyricsText && d.words) d.words = alignLyrics(d.words, window.rawLyricsText);
+      const n=loadData(d, TRACK_NAME||file.name.replace(/\.[^.]+$/,''));
+      if(!n) throw new Error('no words');
+      dataReady=true; setStatus('Loaded '+n+' words · '+LINES.length+' lines'+(BEATS.length?' · '+BEATS.length+' beats':'')+'. Ready.'); refreshPlay();
+    }
+    catch(e){ setStatus('That isn\'t a lyric_data file — it needs a "words" array of {text,start,end,pos}.'); }
+  };
+  r.readAsText(file);
+}
 
 function runCloudAI() {
   const HF_BACKEND = "https://acecalisto3-lyrisee.hf.space/process";
@@ -1020,6 +1164,11 @@ function runCloudAI() {
       setStatus('Cloud processing failed: no result data.');
       return;
     }
+
+    if (window.rawLyricsText && result.words) {
+      result.words = alignLyrics(result.words, window.rawLyricsText);
+    }
+
     var n = loadData(result, TRACK_NAME || lastAudioFile.name.replace(/\.[^.]+$/, ''));
     dataReady = true;
     setStatus('Done — ' + n + ' words · ' + LINES.length + ' lines. Ready to play.');
@@ -1068,6 +1217,11 @@ async function autoTranscribe(){
         toks.forEach((tk,j)=>words.push({text:tk,start:+(s+j*span).toFixed(3),end:+(s+(j+1)*span).toFixed(3),pos:quickPOS(tk)})); }
     }
     if(!words.length) throw new Error('no words returned');
+
+    if (window.rawLyricsText) {
+      words = alignLyrics(words, window.rawLyricsText);
+    }
+
     const n=loadData({words,beats:[]}, TRACK_NAME||lastAudioFile.name.replace(/\.[^.]+$/,''));
     logLine('[done] ' + n + ' words · ' + LINES.length + ' lines', 'log-done');
     logStop();
@@ -1140,6 +1294,14 @@ function wireUI(){
   ppBtn.addEventListener('click',()=>Clock.toggle());
   scrub.addEventListener('input',()=>{scrubbing=true;Clock.seek(scrub.value/1000*Clock.duration);});
   scrub.addEventListener('change',()=>{scrubbing=false;});
+
+  const offsetSlider = document.getElementById('offsetSlider');
+  const offsetVal = document.getElementById('offsetVal');
+  offsetSlider.addEventListener('input', () => {
+    window.lyricOffsetMs = parseInt(offsetSlider.value, 10);
+    offsetVal.textContent = window.lyricOffsetMs + 'ms';
+  });
+
   playBtn.addEventListener('click',start);
   // ingest
 

@@ -175,6 +175,10 @@
     <div id="constructDesc"></div>
   </div>
 
+  <div id="plot-layer" style="display:none; position:fixed; inset:0; z-index:60; background:rgba(0,0,0,0.8); cursor:crosshair;">
+    <div id="plot-hint" style="position:absolute; top:20px; left:50%; transform:translateX(-50%); color:#fff; font-family:'Inter',sans-serif; background:rgba(0,0,0,0.6); padding:10px 20px; border-radius:8px; pointer-events:none;">Tap where the next word should appear (ESC to cancel)</div>
+  </div>
+
   <div id="editor">
     <div class="ed-head"><span>Edit Lyrics</span><button id="edClose" class="mini">Close</button></div>
     <div class="ed-hint">Fix any mis-transcribed words — each row is one line. Edit the text, nudge a line's start time (seconds) if needed, or add / delete lines. <b>Apply &amp; re-render</b> updates the visual live; <b>Download</b> saves a corrected lyric_data.json (rhymes, POS &amp; word-forms are re-derived from your edits).</div>
@@ -511,7 +515,14 @@ function semanticForm(word){const w=clean(word.text);for(const f of FORM_MAP){if
    PART 2 — DATA LOADING (song-agnostic)
    ========================================================================== */
 function loadData(data, name){
-  WORDS=(data&&data.words||[]).filter(w=>w&&w.text&&/\S/.test(w.text)).map(w=>({text:String(w.text),start:+w.start||0,end:+w.end|| (+w.start||0)+0.3, pos:w.pos||'X', rhyme:(w.rhyme==null?-1:w.rhyme), dir:(w.dir||null)}));
+  WORDS=(data&&data.words||[]).filter(w=>w&&w.text&&/\S/.test(w.text)).map(w=>{
+    const wordObj = {text:String(w.text),start:+w.start||0,end:+w.end|| (+w.start||0)+0.3, pos:w.pos||'X', rhyme:(w.rhyme==null?-1:w.rhyme), dir:(w.dir||null)};
+    if (w.customX !== undefined && w.customY !== undefined) {
+      wordObj.customX = w.customX;
+      wordObj.customY = w.customY;
+    }
+    return wordObj;
+  });
   RHYME_PAL=(data&&data.rhyme_palette||[]).slice();
   CONCEPT=(data&&data.concept)||null; applyConcept();
   BEATS=(data&&data.beats||[]).map(Number).filter(n=>!isNaN(n));
@@ -676,6 +687,26 @@ function pseudoRandom(seed) {
 
 function embLayoutPx(spans, metaphor, lineIdx = 0){
   const n=spans.length, vw=window.innerWidth, vh=window.innerHeight;
+
+  // Custom plot layout override: if all words in this line have custom positions, use them
+  let useCustom = true;
+  for (let i = 0; i < n; i++) {
+    const word = WORDS[spans[i].wi];
+    if (word.customX === undefined || word.customY === undefined) {
+      useCustom = false;
+      break;
+    }
+  }
+
+  if (useCustom) {
+    const pos = [];
+    for (let i = 0; i < n; i++) {
+      const word = WORDS[spans[i].wi];
+      pos.push({ x: word.customX, y: word.customY });
+    }
+    return pos;
+  }
+
   // use visually-scaled widths so layout reflects actual rendered size
   const widths=spans.map(s=>(s.w||40)*(s.emS||1)*0.8);
   const gh=spans.reduce((a,s)=>Math.max(a,s.h),18);
@@ -1240,8 +1271,15 @@ function rebuildFromLines(editLines){
     const ln=editLines[i]; const toks=ln.text.trim().split(/\s+/).filter(Boolean); if(!toks.length) continue;
     const start=+ln.start||0; let end=+ln.end; if(!(end>start)) end=start+Math.max(1,toks.length*0.3);
     const weights=toks.map(t=>syllableCount(t)); const tot=weights.reduce((a,b)=>a+b,0)||1; let acc=start; const idx=[];
-    for(let j=0;j<toks.length;j++){ const dur=(end-start)*weights[j]/tot; idx.push(words.length);
-      words.push({text:toks[j],start:+acc.toFixed(3),end:+(acc+dur).toFixed(3),pos:quickPOS(toks[j])}); acc+=dur; }
+    for(let j=0;j<toks.length;j++){
+      const dur=(end-start)*weights[j]/tot; idx.push(words.length);
+      const wordObj = {text:toks[j],start:+acc.toFixed(3),end:+(acc+dur).toFixed(3),pos:quickPOS(toks[j])};
+      if (ln.customPos && ln.customPos[j]) {
+        wordObj.customX = ln.customPos[j].x;
+        wordObj.customY = ln.customPos[j].y;
+      }
+      words.push(wordObj); acc+=dur;
+    }
     lines.push({idx,start,end});
   }
   WORDS=words; LINES=lines; WORD2LINE=new Int32Array(words.length); lines.forEach((l,li)=>l.idx.forEach(wi=>WORD2LINE[wi]=li));
@@ -1249,18 +1287,144 @@ function rebuildFromLines(editLines){
   if(GL.ok){GL.active.forEach(w=>w.dispose());GL.active.clear();}
   DOM.built=false; domLayer.innerHTML=''; DOM.shownLo=-1; DOM.shownHi=-1; if(cur&&cur.layer==='dom') buildDOMOnce(); GL.lastBeat=-1;
 }
+let _plotState = null;
+function openPlotView(row) {
+  const textInput = row.querySelector('.ed-x');
+  const timeInput = row.querySelector('.ed-t');
+  if (!textInput || !textInput.value.trim()) return;
+
+  const words = textInput.value.trim().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return;
+
+  if (Clock.playing) Clock.pause();
+  Clock.seek(parseFloat(timeInput.value) || 0);
+
+  const plotLayer = document.getElementById('plot-layer');
+  const plotHint = document.getElementById('plot-hint');
+  plotLayer.style.display = 'block';
+
+  _plotState = {
+    row: row,
+    words: words,
+    currentIndex: 0,
+    coords: [],
+    markers: []
+  };
+
+  updatePlotHint();
+
+  const clickHandler = function(e) {
+    if (e.target.closest('#plot-hint') || e.target.closest('.ed-plot-marker')) return;
+
+    const x = e.clientX - window.innerWidth / 2;
+    const y = e.clientY - window.innerHeight / 2;
+
+    _plotState.coords.push({x: x, y: y});
+
+    // Draw visual marker
+    const marker = document.createElement('div');
+    marker.className = 'ed-plot-marker ew fn';
+    marker.style.position = 'absolute';
+    marker.style.left = e.clientX + 'px';
+    marker.style.top = e.clientY + 'px';
+    marker.style.transform = 'translate(-50%, -50%)';
+    marker.style.pointerEvents = 'none';
+    marker.textContent = _plotState.words[_plotState.currentIndex];
+    plotLayer.appendChild(marker);
+    _plotState.markers.push(marker);
+
+    _plotState.currentIndex++;
+
+    if (_plotState.currentIndex >= _plotState.words.length) {
+      finishPlotting();
+    } else {
+      updatePlotHint();
+    }
+  };
+
+  const keyHandler = function(e) {
+    if (e.key === 'Escape') cancelPlotting();
+  };
+
+  function updatePlotHint() {
+    plotHint.textContent = `Tap to position word ${_plotState.currentIndex + 1} of ${_plotState.words.length} ("${_plotState.words[_plotState.currentIndex]}") (ESC to cancel)`;
+  }
+
+  function cleanupPlotting() {
+    plotLayer.removeEventListener('click', clickHandler);
+    document.removeEventListener('keydown', keyHandler);
+    _plotState.markers.forEach(m => m.remove());
+    plotLayer.style.display = 'none';
+    _plotState = null;
+  }
+
+  function finishPlotting() {
+    const row = _plotState.row;
+    row.dataset.customPos = JSON.stringify(_plotState.coords);
+    const plotBtn = row.querySelector('.ed-plot');
+    if (plotBtn) {
+      plotBtn.style.color = '#4f9';
+      plotBtn.style.borderColor = '#4f9';
+    }
+    cleanupPlotting();
+  }
+
+  function cancelPlotting() {
+    cleanupPlotting();
+  }
+
+  plotLayer.addEventListener('click', clickHandler);
+  document.addEventListener('keydown', keyHandler);
+}
+
 function edFmt(s){return (Math.round((+s||0)*10)/10).toFixed(1);}
 function edAddRow(start,text){
   const row=document.createElement('div'); row.className='ed-row';
   const t=document.createElement('input'); t.type='number'; t.step='0.1'; t.className='ed-t'; t.value=edFmt(start); t.title='line start (seconds)';
   const x=document.createElement('input'); x.type='text'; x.className='ed-x'; x.value=text||''; x.spellcheck=false;
+  const plot=document.createElement('button'); plot.className='ed-plot ed-del'; plot.textContent='⌖'; plot.title='Plot word positions'; plot.addEventListener('click',()=>openPlotView(row));
   const del=document.createElement('button'); del.className='ed-del'; del.textContent='×'; del.title='delete line'; del.addEventListener('click',()=>row.remove());
-  row.appendChild(t); row.appendChild(x); row.appendChild(del); edList.appendChild(row); return row;
+  row.appendChild(t); row.appendChild(x); row.appendChild(plot); row.appendChild(del); edList.appendChild(row); return row;
 }
-function edPopulate(){ edList.innerHTML=''; if(!LINES.length){ edAddRow(0,''); return; } LINES.forEach(ln=>edAddRow(ln.start, ln.idx.map(wi=>WORDS[wi].text).join(' '))); }
+function edPopulate(){
+  edList.innerHTML='';
+  if(!LINES.length){ edAddRow(0,''); return; }
+  LINES.forEach(ln=>{
+    const row = edAddRow(ln.start, ln.idx.map(wi=>WORDS[wi].text).join(' '));
+    // Check if line has custom pos
+    const customPos = [];
+    let hasCustomPos = false;
+    ln.idx.forEach(wi => {
+      if (WORDS[wi].customX !== undefined && WORDS[wi].customY !== undefined) {
+        customPos.push({x: WORDS[wi].customX, y: WORDS[wi].customY});
+        hasCustomPos = true;
+      } else {
+        customPos.push(null);
+      }
+    });
+    if (hasCustomPos) {
+      row.dataset.customPos = JSON.stringify(customPos);
+      const plotBtn = row.querySelector('.ed-plot');
+      if (plotBtn) {
+        plotBtn.style.color = '#4f9';
+        plotBtn.style.borderColor = '#4f9';
+      }
+    }
+  });
+}
 function edRead(){
   const rows=[].slice.call(edList.querySelectorAll('.ed-row'));
-  let lines=rows.map(r=>({start:parseFloat(r.querySelector('.ed-t').value)||0,text:r.querySelector('.ed-x').value||''})).filter(l=>l.text.trim());
+  let lines=rows.map(r=>{
+    let customPos = null;
+    if (r.dataset.customPos) {
+      try { customPos = JSON.parse(r.dataset.customPos); } catch(e) {}
+    }
+    return {
+      start:parseFloat(r.querySelector('.ed-t').value)||0,
+      text:r.querySelector('.ed-x').value||'',
+      customPos: customPos
+    };
+  }).filter(l=>l.text.trim());
   lines.sort((a,b)=>a.start-b.start);
   for(let i=0;i<lines.length;i++){ lines[i].end=(i+1<lines.length)?Math.max(lines[i].start+0.4,lines[i+1].start):lines[i].start+Math.max(1,lines[i].text.trim().split(/\s+/).length*0.3); }
   return lines;

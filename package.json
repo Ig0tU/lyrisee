@@ -1,0 +1,24 @@
+{
+  "name": "app",
+  "version": "1.0.0",
+  "description": "Turn any song into a synced, intelligent lyric video. Drop audio or video + a `lyric_data.json`, and the engine renders kinetic typography that reads the lyrics' meaning — rhyme color-coding, semantic word-forms, and a per-song \"Director\" that art-directs the look.",
+  "main": "verify_frontend.spec.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Ig0tU/lyrisee.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Ig0tU/lyrisee/issues"
+  },
+  "homepage": "https://github.com/Ig0tU/lyrisee#readme",
+  "devDependencies": {
+    "@playwright/test": "^1.61.0"
+  }
+}

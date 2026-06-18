@@ -133,6 +133,9 @@
   .bg-plain { background: #111; }
   .bg-generic { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%); }
   .bg-textured { background: radial-gradient(circle at center, #2b2b2c 0%, #111 100%), url('data:image/svg+xml;utf8,<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"><filter id="noiseFilter"><feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(%23noiseFilter)" opacity="0.1"/></svg>'); background-blend-mode: overlay; }
+
+  #watermarkUI{position:absolute;bottom:30px;right:30px;z-index:45;font-family:'Anton',sans-serif;font-size:32px;letter-spacing:0.05em;color:rgba(255,255,255,0.3);pointer-events:none;display:none;}
+  #watermarkUI.show{display:block;}
 </style>
 </head>
 <body>
@@ -186,7 +189,33 @@
     <button id="audioBtn" class="mini" title="Load / change audio">♪ Audio</button>
     <input id="audioInput2" type="file" accept="audio/*,video/*" style="display:none">
     <button id="fsBtn" class="mini" title="Fullscreen (F)">⛶</button>
+    <button id="exportBtn" class="ghost" style="margin-left:14px; background:var(--panel);">Export Video</button>
   </div>
+
+  <div id="exportModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.85); z-index:9999; flex-direction:column; align-items:center; justify-content:center;">
+    <div style="background:var(--panel); border:1px solid var(--line); padding:32px; border-radius:12px; width:90%; max-width:500px; text-align:center;">
+      <h2 style="font-family:'Anton'; font-weight:400; font-size:28px; margin-top:0; color:#F4F1EA; letter-spacing:0.04em;">Export Video</h2>
+      <p style="font-size:13px; color:var(--dim); line-height:1.6; margin-bottom:24px;">Download a watermarked 15-second sample, or unlock the full unwatermarked video.</p>
+      <div style="display:flex; flex-direction:column; gap:12px;">
+        <button id="exportSampleBtn" class="ghost" style="padding:16px; font-size:14px; border-color:#888;">Download Sample (15s, Watermarked)</button>
+        <button id="exportFullBtn" class="ghost-solid" style="padding:16px; font-size:14px; background:#4a9eff; color:#fff; border:none;">Unlock Full Video (No Watermark) - $9.99</button>
+        <button id="exportFullPaidBtn" class="ghost-solid" style="padding:16px; font-size:14px; background:#4CAF50; color:#fff; border:none; display:none;">Download Full Video</button>
+      </div>
+      <div style="margin-top:24px;">
+        <button id="exportCancelBtn" class="mini" style="background:transparent; border:none;">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="exportProgressModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.9); z-index:10000; flex-direction:column; align-items:center; justify-content:center;">
+    <div style="text-align:center;">
+      <h2 style="font-family:'Anton'; font-weight:400; font-size:24px; color:#F4F1EA; margin-bottom:12px;">Recording Video...</h2>
+      <div id="exportStatus" style="font-size:13px; color:var(--dim); font-variant-numeric:tabular-nums; margin-bottom:24px;">0:00 / 0:15</div>
+      <button id="exportStopBtn" class="ghost" style="border-color:#f87; color:#f87;">Stop & Cancel</button>
+    </div>
+  </div>
+
+  <div id="watermarkUI">LYRISEE</div>
 
   <div id="intro">
     <h1>LYRISEE</h1>
@@ -973,6 +1002,170 @@ function wireUI(){
   ppBtn.addEventListener('click',()=>Clock.toggle());
   scrub.addEventListener('input',()=>{scrubbing=true;Clock.seek(scrub.value/1000*Clock.duration);});
   scrub.addEventListener('change',()=>{scrubbing=false;});
+
+  /* Export MediaRecorder Logic */
+  let exportRecorder = null;
+  let exportChunks = [];
+  let isExporting = false;
+  let exportTargetTime = 0;
+  let exportAnimFrame = null;
+  let exportUseWatermark = false;
+  const compCanvas = document.createElement('canvas');
+  const compCtx = compCanvas.getContext('2d');
+
+  let ac = null;
+  let dest = null;
+  let sourceNode = null;
+
+  const exportBtn = document.getElementById('exportBtn');
+  const exportModal = document.getElementById('exportModal');
+  const exportSampleBtn = document.getElementById('exportSampleBtn');
+  const exportFullBtn = document.getElementById('exportFullBtn');
+  const exportFullPaidBtn = document.getElementById('exportFullPaidBtn');
+  const exportCancelBtn = document.getElementById('exportCancelBtn');
+  const exportProgressModal = document.getElementById('exportProgressModal');
+  const exportStatus = document.getElementById('exportStatus');
+  const exportStopBtn = document.getElementById('exportStopBtn');
+  const watermarkUI = document.getElementById('watermarkUI');
+  const bgVideo = document.getElementById('bgVideo');
+
+  exportBtn.addEventListener('click', () => {
+    exportModal.style.display = 'flex';
+  });
+  exportCancelBtn.addEventListener('click', () => {
+    exportModal.style.display = 'none';
+  });
+
+  // Mock payment gateway interaction
+  exportFullBtn.addEventListener('click', () => {
+    exportFullBtn.textContent = 'Processing Payment...';
+    setTimeout(() => {
+      exportFullBtn.style.display = 'none';
+      exportFullPaidBtn.style.display = 'block';
+    }, 1500);
+  });
+
+  function startExport(duration, useWatermark) {
+    if (!Clock.audio) { setStatus('Load media before exporting.'); return; }
+    exportModal.style.display = 'none';
+    exportProgressModal.style.display = 'flex';
+    isExporting = true;
+    exportTargetTime = duration;
+    exportUseWatermark = useWatermark;
+    exportChunks = [];
+
+    // Reset playback
+    Clock.pause();
+    Clock.seek(0);
+
+    // Setup Audio Routing
+    if (!ac) {
+      ac = new (window.AudioContext || window.webkitAudioContext)();
+      dest = ac.createMediaStreamDestination();
+    }
+    // Only create sourceNode once per media element
+    if (!sourceNode && Clock.audio) {
+      try {
+        sourceNode = ac.createMediaElementSource(Clock.audio);
+        sourceNode.connect(ac.destination); // Keep hearing it
+        sourceNode.connect(dest); // Route to recorder
+      } catch(e) {
+        console.warn("Audio Context error:", e);
+      }
+    }
+
+    if(ac.state === 'suspended') ac.resume();
+
+    // Setup Composite Canvas
+    compCanvas.width = canvas.width || window.innerWidth;
+    compCanvas.height = canvas.height || window.innerHeight;
+
+    const stream = compCanvas.captureStream(30);
+    // Merge audio if available
+    if (dest && dest.stream.getAudioTracks().length > 0) {
+      stream.addTrack(dest.stream.getAudioTracks()[0]);
+    }
+
+    try {
+      exportRecorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
+    } catch(e) {
+      exportRecorder = new MediaRecorder(stream);
+    }
+
+    exportRecorder.ondataavailable = e => { if (e.data.size > 0) exportChunks.push(e.data); };
+    exportRecorder.onstop = () => {
+      const blob = new Blob(exportChunks, { type: 'video/webm' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = ((TRACK_NAME||'lyrisee_video').replace(/[^\w.-]+/g,'_')) + '.webm';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      exportProgressModal.style.display = 'none';
+      isExporting = false;
+      watermarkUI.classList.remove('show');
+      cancelAnimationFrame(exportAnimFrame);
+    };
+
+    if (useWatermark) watermarkUI.classList.add('show');
+
+    exportRecorder.start();
+    Clock.play();
+    drawExportFrame();
+  }
+
+  function drawExportFrame() {
+    if (!isExporting) return;
+    const now = Clock.time;
+
+    compCtx.fillStyle = window.getComputedStyle(stage).backgroundColor || '#000';
+    compCtx.fillRect(0, 0, compCanvas.width, compCanvas.height);
+
+    if (bgVideo && bgVideo.style.opacity === '1') {
+      compCtx.drawImage(bgVideo, 0, 0, compCanvas.width, compCanvas.height);
+    }
+
+    compCtx.drawImage(canvas, 0, 0, compCanvas.width, compCanvas.height);
+
+
+    if (exportUseWatermark) {
+      compCtx.save();
+      compCtx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+      compCtx.font = '32px Anton, sans-serif';
+      compCtx.textAlign = 'right';
+      compCtx.textBaseline = 'bottom';
+      compCtx.fillText('LYRISEE', compCanvas.width - 30, compCanvas.height - 30);
+      compCtx.restore();
+    }
+
+    exportStatus.textContent = fmt(now) + ' / ' + fmt(exportTargetTime);
+
+    if (now >= exportTargetTime || now >= Clock.duration) {
+      exportRecorder.stop();
+      Clock.pause();
+    } else {
+      exportAnimFrame = requestAnimationFrame(drawExportFrame);
+    }
+  }
+
+  exportSampleBtn.addEventListener('click', () => {
+    startExport(15, true);
+  });
+  exportFullPaidBtn.addEventListener('click', () => {
+    startExport(Clock.duration, false);
+  });
+  exportStopBtn.addEventListener('click', () => {
+    if (exportRecorder && exportRecorder.state !== 'inactive') {
+      exportRecorder.stop();
+    }
+    exportProgressModal.style.display = 'none';
+    isExporting = false;
+    watermarkUI.classList.remove('show');
+    cancelAnimationFrame(exportAnimFrame);
+  });
+  /* End Export Logic */
+
   playBtn.addEventListener('click',start);
   // ingest
 

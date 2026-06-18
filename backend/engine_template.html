@@ -1052,8 +1052,8 @@ function wireUI(){
     exportProgressModal.style.display = 'flex';
     isExporting = true;
     exportTargetTime = duration;
-    exportCancelled = false;
     exportUseWatermark = useWatermark;
+    exportCancelled = false;
     exportChunks = [];
 
     // Reset playback
@@ -1123,7 +1123,7 @@ function wireUI(){
     if (!isExporting) return;
     const now = Clock.time;
 
-    compCtx.fillStyle = window.getComputedStyle(stage).backgroundColor || '#000';
+    compCtx.fillStyle = window.getComputedStyle(document.body).backgroundColor || '#000';
     compCtx.fillRect(0, 0, compCanvas.width, compCanvas.height);
 
     if (bgVideo && bgVideo.style.opacity === '1') {

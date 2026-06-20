@@ -883,36 +883,151 @@ function onJSONChosen(file){ if(!file) return; const r=new FileReader();
     catch(e){ setStatus('That isn\'t a lyric_data file — it needs a "words" array of {text,start,end,pos}.'); } };
   r.readAsText(file); }
 
-async function runCloudAI() {
-  const apiUrl = document.getElementById('apiUrlInput').value.trim();
-  if(!apiUrl) { setStatus('Enter a HuggingFace API URL first.'); return; }
-  if(!lastAudioFile) { setStatus('Load an audio or video file first.'); return; }
+function alignLyrics(transcribedWords, rawText) {
+  const rawLines = rawText.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  const rawWords = [];
+  rawLines.forEach(line => {
+    const toks = line.split(/\s+/).filter(Boolean);
+    toks.forEach((tok, idx) => {
+      rawWords.push({
+        text: tok,
+        isLineBreak: idx === toks.length - 1
+      });
+    });
+  });
+
+  if (!rawWords.length || !transcribedWords.length) return transcribedWords;
+
+  function cleanAlign(t) { return (t || '').toLowerCase().replace(/[^a-z0-9]/g, ''); }
+
+  const n = transcribedWords.length;
+  const m = rawWords.length;
+  const dp = Array.from({length: n + 1}, () => new Int32Array(m + 1));
+
+  for (let i = 0; i <= n; i++) dp[i][0] = i;
+  for (let j = 0; j <= m; j++) dp[0][j] = j;
+
+  for (let i = 1; i <= n; i++) {
+    for (let j = 1; j <= m; j++) {
+      const cost = cleanAlign(transcribedWords[i-1].text) === cleanAlign(rawWords[j-1].text) ? 0 : 1;
+      dp[i][j] = Math.min(
+        dp[i-1][j] + 1,
+        dp[i][j-1] + 1,
+        dp[i-1][j-1] + cost
+      );
+    }
+  }
+
+  let i = n, j = m;
+  const alignment = [];
+  while (i > 0 || j > 0) {
+    if (i > 0 && j > 0 && dp[i][j] === dp[i-1][j-1] + (cleanAlign(transcribedWords[i-1].text) === cleanAlign(rawWords[j-1].text) ? 0 : 1)) {
+      alignment.push({ tWord: transcribedWords[i-1], rWord: rawWords[j-1] });
+      i--; j--;
+    } else if (i > 0 && dp[i][j] === dp[i-1][j] + 1) {
+      alignment.push({ tWord: transcribedWords[i-1], rWord: null });
+      i--;
+    } else {
+      alignment.push({ tWord: null, rWord: rawWords[j-1] });
+      j--;
+    }
+  }
+  alignment.reverse();
+
+  const mergedWords = [];
+  let currentWord = null;
+
+  for (const pair of alignment) {
+    if (pair.tWord) {
+      currentWord = { ...pair.tWord };
+      if (pair.rWord) {
+        currentWord.text = pair.rWord.text;
+        if (pair.rWord.isLineBreak) currentWord.isLineBreak = true;
+      }
+      mergedWords.push(currentWord);
+    } else if (pair.rWord && currentWord) {
+      // Unmatched raw word, maybe append to previous word or insert
+      // For simplicity, we just keep transcribed words and update their text/linebreaks if matched
+    }
+  }
+
+  return mergedWords;
+}
+
+function runCloudAI() {
+  const HF_BACKEND = "https://acecalisto3-lyrisee.hf.space/process";
+  let apiUrl = document.getElementById('apiUrlInput').value.trim();
+  if (!apiUrl) apiUrl = window.location.hostname.includes("hf.space") ? "/process" : HF_BACKEND;
+  if (!apiUrl.endsWith('/process')) apiUrl = apiUrl.replace(/\/$/, '') + '/process';
+  if (!lastAudioFile) { setStatus('Load an audio or video file first.'); return; }
 
   const btn = document.getElementById('cloudBtn');
-  btn.disabled = true;
-  setStatus('Uploading media to Cloud API... This may take a few minutes for separation and AI translation.');
+  if (btn) btn.disabled = true;
+  setStatus('Uploading 0%…');
 
   const provider = document.getElementById('aiProviderSel').value;
   const formData = new FormData();
   formData.append('file', lastAudioFile);
   formData.append('ai_provider', provider);
 
-  try {
-    const res = await fetch(apiUrl, { method: 'POST', body: formData });
-    if(!res.ok) throw new Error('API returned ' + res.status);
-    const data = await res.json();
-    if(data.error) throw new Error(data.error);
+  const xhr = new XMLHttpRequest();
+  xhr.open('POST', apiUrl);
+  let sseOffset = 0, result = null;
 
-    const n = loadData(data, TRACK_NAME || lastAudioFile.name.replace(/\.[^.]+$/, ''));
-    dataReady = true;
-    setStatus('Cloud processing complete! Loaded ' + n + ' words. Ready.');
-    refreshPlay();
-  } catch(e) {
-    console.error(e);
-    setStatus('Cloud processing failed: ' + e.message);
-  } finally {
-    btn.disabled = false;
+  xhr.upload.onprogress = function(e) {
+    if (!e.lengthComputable) return;
+    const pct = Math.round(e.loaded / e.total * 100);
+    setStatus('Uploading ' + pct + '%…');
+  };
+  xhr.upload.onload = function() {
+    setStatus('☁️ File received — processing…');
+  };
+
+  function parseSseChunk() {
+    const chunk = xhr.responseText.slice(sseOffset);
+    const lastNewline = chunk.lastIndexOf('\n');
+    if (lastNewline === -1) return;
+    const completeData = chunk.slice(0, lastNewline);
+    sseOffset += lastNewline + 1;
+
+    completeData.split('\n').forEach(function(line) {
+      if (!line.startsWith('data: ')) return;
+      var msg; try { msg = JSON.parse(line.slice(6)); } catch(e) { return; }
+      if (msg.log) {
+        setStatus(msg.log);
+      }
+      if (msg.error) { setStatus('ERROR: ' + msg.error); }
+      if (msg.done && msg.result) result = msg.result;
+    });
   }
+  xhr.onprogress = parseSseChunk;
+
+  xhr.onload = function() {
+    parseSseChunk(); // flush any remaining data
+    if (btn) btn.disabled = false;
+    if (xhr.status !== 200) {
+      setStatus('Cloud processing failed: HTTP ' + xhr.status);
+      return;
+    }
+    if (!result) {
+      try { result = JSON.parse(xhr.responseText); } catch(e) {}
+    }
+    if (!result || !result.words) {
+      setStatus('Cloud processing failed: no result data.');
+      return;
+    }
+
+    if (window.rawLyricsText && result.words) {
+      result.words = alignLyrics(result.words, window.rawLyricsText);
+    }
+
+    var n = loadData(result, TRACK_NAME || lastAudioFile.name.replace(/\.[^.]+$/, ''));
+    dataReady = true;
+    setStatus('Done — ' + n + ' words · ' + LINES.length + ' lines. Ready to play.');
+    refreshPlay();
+  };
+
+  xhr.send(formData);
 }
 
 async function autoTranscribe(){
@@ -1007,6 +1122,7 @@ function wireUI(){
   let exportRecorder = null;
   let exportChunks = [];
   let isExporting = false;
+  let exportCancelled = false;
   let exportTargetTime = 0;
   let exportAnimFrame = null;
   let exportUseWatermark = false;
@@ -1052,6 +1168,7 @@ function wireUI(){
     isExporting = true;
     exportTargetTime = duration;
     exportUseWatermark = useWatermark;
+    exportCancelled = false;
     exportChunks = [];
 
     // Reset playback
@@ -1094,14 +1211,16 @@ function wireUI(){
 
     exportRecorder.ondataavailable = e => { if (e.data.size > 0) exportChunks.push(e.data); };
     exportRecorder.onstop = () => {
-      const blob = new Blob(exportChunks, { type: 'video/webm' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = ((TRACK_NAME||'lyrisee_video').replace(/[^\w.-]+/g,'_')) + '.webm';
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
+      if (!exportCancelled) {
+        const blob = new Blob(exportChunks, { type: 'video/webm' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = ((TRACK_NAME||'lyrisee_video').replace(/[^\w.-]+/g,'_')) + '.webm';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+      }
       exportProgressModal.style.display = 'none';
       isExporting = false;
       watermarkUI.classList.remove('show');
@@ -1119,7 +1238,7 @@ function wireUI(){
     if (!isExporting) return;
     const now = Clock.time;
 
-    compCtx.fillStyle = window.getComputedStyle(stage).backgroundColor || '#000';
+    compCtx.fillStyle = window.getComputedStyle(document.body).backgroundColor || '#000';
     compCtx.fillRect(0, 0, compCanvas.width, compCanvas.height);
 
     if (bgVideo && bgVideo.style.opacity === '1') {
@@ -1156,6 +1275,7 @@ function wireUI(){
     startExport(Clock.duration, false);
   });
   exportStopBtn.addEventListener('click', () => {
+    exportCancelled = true;
     if (exportRecorder && exportRecorder.state !== 'inactive') {
       exportRecorder.stop();
     }

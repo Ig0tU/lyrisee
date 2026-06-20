@@ -1188,8 +1188,11 @@ function runCloudAI() {
   // ── streaming log lines while backend runs ───────────────────────────────
   function parseSseChunk() {
     const chunk = xhr.responseText.slice(sseOffset);
-    sseOffset = xhr.responseText.length;
-    chunk.split('\n').forEach(function(line) {
+    const lastNewline = chunk.lastIndexOf('\n');
+    if (lastNewline === -1) return;
+    const completeData = chunk.slice(0, lastNewline);
+    sseOffset += lastNewline + 1;
+    completeData.split('\n').forEach(function(line) {
       if (!line.startsWith('data: ')) return;
       var msg; try { msg = JSON.parse(line.slice(6)); } catch(e) { return; }
       if (msg.log) {
@@ -1491,6 +1494,7 @@ function wireUI(){
   let exportRecorder = null;
   let exportChunks = [];
   let isExporting = false;
+  let exportCancelled = false;
   let exportTargetTime = 0;
   let exportAnimFrame = null;
   let exportUseWatermark = false;
@@ -1536,6 +1540,7 @@ function wireUI(){
     isExporting = true;
     exportTargetTime = duration;
     exportUseWatermark = useWatermark;
+    exportCancelled = false;
     exportChunks = [];
 
     // Reset playback
@@ -1578,14 +1583,16 @@ function wireUI(){
 
     exportRecorder.ondataavailable = e => { if (e.data.size > 0) exportChunks.push(e.data); };
     exportRecorder.onstop = () => {
-      const blob = new Blob(exportChunks, { type: 'video/webm' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = ((TRACK_NAME||'lyrisee_video').replace(/[^\w.-]+/g,'_')) + '.webm';
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
+      if (!exportCancelled) {
+        const blob = new Blob(exportChunks, { type: 'video/webm' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = ((TRACK_NAME||'lyrisee_video').replace(/[^\w.-]+/g,'_')) + '.webm';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+      }
       exportProgressModal.style.display = 'none';
       isExporting = false;
       watermarkUI.classList.remove('show');
@@ -1603,7 +1610,7 @@ function wireUI(){
     if (!isExporting) return;
     const now = Clock.time;
 
-    compCtx.fillStyle = window.getComputedStyle(stage).backgroundColor || '#000';
+    compCtx.fillStyle = window.getComputedStyle(document.body).backgroundColor || '#000';
     compCtx.fillRect(0, 0, compCanvas.width, compCanvas.height);
 
     if (bgVideo && bgVideo.style.opacity === '1') {
@@ -1640,6 +1647,7 @@ function wireUI(){
     startExport(Clock.duration, false);
   });
   exportStopBtn.addEventListener('click', () => {
+    exportCancelled = true;
     if (exportRecorder && exportRecorder.state !== 'inactive') {
       exportRecorder.stop();
     }

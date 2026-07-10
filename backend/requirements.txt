@@ -11,3 +11,4 @@ tqdm
 fastapi
 uvicorn
 python-multipart
+pronouncing

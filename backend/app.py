@@ -32,7 +32,9 @@ def health():
 @app.post("/process")
 async def process_media(
     file: UploadFile = File(...),
-    ai_provider: str = Form("gemini")
+    ai_provider: str = Form("gemini"),
+    master_audio: bool = Form(False),
+    separate_vocals: bool = Form(False)
 ):
     if not file.filename:
         return JSONResponse(status_code=400, content={"error": "No file uploaded"})
@@ -43,6 +45,7 @@ async def process_media(
 
     file_mb = os.path.getsize(temp_path) / (1024 * 1024)
     out_json = temp_path + "_lyrics.json"
+    out_audio = temp_path + "_mastered.wav"
 
     async def event_stream():
         proc = None
@@ -57,9 +60,15 @@ async def process_media(
             env["LYRISEE_LLM"] = ai_provider
             env["PYTHONUNBUFFERED"] = "1"  # force line-by-line stdout flush
 
+            cmd_args = ["python3", "-u", processor_path, temp_path, "-o", out_json]
+            if master_audio:
+                cmd_args.append("--master")
+            if separate_vocals:
+                cmd_args.append("--separate")
+
             # asyncio subprocess — never blocks the event loop
             proc = await asyncio.create_subprocess_exec(
-                "python3", "-u", processor_path, temp_path, "-o", out_json,
+                *cmd_args,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.STDOUT,
                 env=env,
@@ -86,6 +95,12 @@ async def process_media(
 
             word_count = len(data.get("words", []))
             yield _sse({"log": f"[done] {word_count} words · {len(data.get('beats', []))} beats"})
+            if master_audio and os.path.exists(out_audio):
+                import base64
+                with open(out_audio, "rb") as af:
+                    b64_audio = base64.b64encode(af.read()).decode("utf-8")
+                    data["_mastered_audio"] = f"data:audio/wav;base64,{b64_audio}"
+                os.remove(out_audio)
             yield _sse({"done": True, "result": data})
 
         except Exception as e:

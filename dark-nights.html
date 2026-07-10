@@ -236,6 +236,7 @@ const DEMO_DATA = /*__LYRIC_DATA__*/{"words":[{"text":"Go","start":0.9,"end":1.0
 
 (function(){
 'use strict';
+try{
 /* song data is loaded at runtime — NOT bound to any single track */
 let WORDS=[], BEATS=[], LINES=[], WORD2LINE=new Int32Array(0), DURATION=8, TRACK_NAME='';
 let ARRANGEMENT=[], autoArrange=false;            // intent-driven construct switching
@@ -720,7 +721,7 @@ async function autoTranscribe(){
   try{
     const mod=await import('https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2');
     mod.env.allowLocalModels=false;
-    const asr=await mod.pipeline('automatic-speech-recognition','Xenova/whisper-tiny.en',{quantized:true});
+    const asr=await mod.pipeline('automatic-speech-recognition','Xenova/whisper-base.en',{quantized:true});
     setStatus('Decoding audio…');
     const buf=await lastAudioFile.arrayBuffer();
     const AC=window.AudioContext||window.webkitAudioContext; const ac=new AC({sampleRate:16000});
@@ -805,6 +806,7 @@ function wireUI(){
   let exportRecorder = null;
   let exportChunks = [];
   let isExporting = false;
+  let exportCancelled = false;
   let exportTargetTime = 0;
   let exportAnimFrame = null;
   let exportUseWatermark = false;
@@ -850,6 +852,7 @@ function wireUI(){
     isExporting = true;
     exportTargetTime = duration;
     exportUseWatermark = useWatermark;
+    exportCancelled = false;
     exportChunks = [];
 
     // Reset playback
@@ -892,14 +895,16 @@ function wireUI(){
 
     exportRecorder.ondataavailable = e => { if (e.data.size > 0) exportChunks.push(e.data); };
     exportRecorder.onstop = () => {
-      const blob = new Blob(exportChunks, { type: 'video/webm' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = ((TRACK_NAME||'lyrisee_video').replace(/[^\w.-]+/g,'_')) + '.webm';
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
+      if (!exportCancelled) {
+        const blob = new Blob(exportChunks, { type: 'video/webm' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = ((TRACK_NAME||'lyrisee_video').replace(/[^\w.-]+/g,'_')) + '.webm';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+      }
       exportProgressModal.style.display = 'none';
       isExporting = false;
       watermarkUI.classList.remove('show');
@@ -917,7 +922,7 @@ function wireUI(){
     if (!isExporting) return;
     const now = Clock.time;
 
-    compCtx.fillStyle = window.getComputedStyle(stage).backgroundColor || '#000';
+    compCtx.fillStyle = window.getComputedStyle(document.body).backgroundColor || '#000';
     compCtx.fillRect(0, 0, compCanvas.width, compCanvas.height);
 
     if (bgVideo && bgVideo.style.opacity === '1') {
@@ -954,6 +959,7 @@ function wireUI(){
     startExport(Clock.duration, false);
   });
   exportStopBtn.addEventListener('click', () => {
+    exportCancelled = true;
     if (exportRecorder && exportRecorder.state !== 'inactive') {
       exportRecorder.stop();
     }
@@ -990,7 +996,7 @@ function wireUI(){
 }
 function boot(){
   wireUI(); setConstruct(Q_CONSTRUCT||CONSTRUCTS[0].id);
-  const fontUrl='https://cdn.jsdelivr.net/npm/three@0.128.0/examples/fonts/helvetiker_bold.typeface.json';
+  const fontUrl='https://unpkg.com/three@0.128.0/examples/fonts/helvetiker_bold.typeface.json';
   const finish=(font)=>{
     let glok=false; try{ glok=font?initGL(font):false; }catch(e){ glok=false; }
     if(AUTOLOAD_NAME){ const n=loadData(DEMO_DATA,AUTOLOAD_NAME); dataReady=true; refreshPlay();
@@ -1017,6 +1023,7 @@ function boot(){
   try{ new THREE.FontLoader().load(fontUrl, f=>finish(f), undefined, ()=>finish(null)); }catch(e){ finish(null); }
 }
 boot();
+} catch(e) { console.error("BOOT ERROR:", e); }
 })();
 </script>
 </body>

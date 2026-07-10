@@ -287,6 +287,7 @@ const DEMO_DATA = /*__LYRIC_DATA__*/ {"words":[],"beats":[]} /*__END__*/;  // bu
 
 (function(){
 'use strict';
+try{
 /* song data is loaded at runtime — NOT bound to any single track */
 let WORDS=[], BEATS=[], LINES=[], WORD2LINE=new Int32Array(0), DURATION=8, TRACK_NAME='';
 let ARRANGEMENT=[], autoArrange=false;            // intent-driven construct switching
@@ -1031,6 +1032,12 @@ function runCloudAI() {
       result.words = alignLyrics(result.words, window.rawLyricsText);
     }
 
+    if (result._mastered_audio) {
+      const aud = new Audio();
+      aud.src = result._mastered_audio;
+      Clock.audio = aud;
+      logLine('[browser] Audio updated to server-mastered version');
+    }
     var n = loadData(result, TRACK_NAME || lastAudioFile.name.replace(/\.[^.]+$/, ''));
     dataReady = true;
     setStatus('Done — ' + n + ' words · ' + LINES.length + ' lines. Ready to play.');

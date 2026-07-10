@@ -236,6 +236,7 @@ const DEMO_DATA = /*__LYRIC_DATA__*/{"words":[{"text":"Get","start":15.34,"end":
 
 (function(){
 'use strict';
+try{
 /* song data is loaded at runtime — NOT bound to any single track */
 let WORDS=[], BEATS=[], LINES=[], WORD2LINE=new Int32Array(0), DURATION=8, TRACK_NAME='';
 let ARRANGEMENT=[], autoArrange=false;            // intent-driven construct switching

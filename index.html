@@ -1241,6 +1241,12 @@ function runCloudAI() {
       result.words = alignLyrics(result.words, window.rawLyricsText);
     }
 
+    if (result._mastered_audio) {
+      const aud = new Audio();
+      aud.src = result._mastered_audio;
+      Clock.audio = aud;
+      logLine('[browser] Audio updated to server-mastered version');
+    }
     var n = loadData(result, TRACK_NAME || lastAudioFile.name.replace(/\.[^.]+$/, ''));
     dataReady = true;
     setStatus('Done — ' + n + ' words · ' + LINES.length + ' lines. Ready to play.');

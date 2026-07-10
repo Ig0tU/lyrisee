@@ -45,6 +45,7 @@ async def process_media(
 
     file_mb = os.path.getsize(temp_path) / (1024 * 1024)
     out_json = temp_path + "_lyrics.json"
+    out_audio = temp_path + "_mastered.wav"
 
     async def event_stream():
         proc = None
@@ -94,6 +95,12 @@ async def process_media(
 
             word_count = len(data.get("words", []))
             yield _sse({"log": f"[done] {word_count} words · {len(data.get('beats', []))} beats"})
+            if master_audio and os.path.exists(out_audio):
+                import base64
+                with open(out_audio, "rb") as af:
+                    b64_audio = base64.b64encode(af.read()).decode("utf-8")
+                    data["_mastered_audio"] = f"data:audio/wav;base64,{b64_audio}"
+                os.remove(out_audio)
             yield _sse({"done": True, "result": data})
 
         except Exception as e:

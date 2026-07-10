@@ -33,7 +33,32 @@ FUNCTION_FALLBACK = set(
 )
 
 
+
+def master_audio(audio_path: str) -> str:
+    """Apply noise reduction, EQ, and dynamic compression using ffmpeg/sox."""
+    try:
+        import subprocess
+        out_path = audio_path + "_mastered.wav"
+        print(f"[mastering] applying noise reduction and EQ to {audio_path}...")
+
+        # Highpass filter (removes low-end rumble), lowpass filter (removes extreme high hiss),
+        # multi-band EQ to brighten vocals, and dynamic compression.
+        # This addresses the user's specific request for truck recordings.
+        cmd = [
+            "ffmpeg", "-y", "-i", audio_path,
+            "-af", "highpass=f=80,lowpass=f=12000,equalizer=f=3000:width_type=o:width=2:g=5,acompressor=threshold=-20dB:ratio=4:attack=5:release=50",
+            out_path
+        ]
+
+        subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        print(f"[mastering] mastered audio saved to {out_path}")
+        return out_path
+    except Exception as e:
+        print(f"[mastering] failed ({e}); using original audio")
+        return audio_path
+
 def separate_vocals(audio_path: str) -> str:
+
     """Run demucs and return the path to the isolated vocals stem (or original on failure)."""
     try:
         out = tempfile.mkdtemp(prefix="lyrisee_demucs_")
@@ -146,6 +171,7 @@ def main():
     ap.add_argument("-o", "--out", default="lyric_data.json", help="output JSON path")
     ap.add_argument("--model", default="base", help="Whisper size: tiny|base|small|medium|large")
     ap.add_argument("--separate", action="store_true", help="run demucs to isolate vocals first")
+    ap.add_argument("--master", action="store_true", help="apply noise reduction and EQ to tighten/crisp audio")
     ap.add_argument("--no-arrange", action="store_true", help="skip the intent-driven arrangement")
     ap.add_argument("--no-ai", action="store_true", help="skip the LLM lyric-repair + art-direction stage")
     args = ap.parse_args()
@@ -153,7 +179,8 @@ def main():
     if not os.path.isfile(args.audio):
         sys.exit(f"media not found: {args.audio}")
 
-    asr_input = separate_vocals(args.audio) if args.separate else args.audio
+    mastered_input = master_audio(args.audio) if args.master else args.audio
+    asr_input = separate_vocals(mastered_input) if args.separate else mastered_input
     words = transcribe_words(asr_input, args.model)
     if not words:
         sys.exit("no words transcribed")

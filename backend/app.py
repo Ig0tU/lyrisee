@@ -32,7 +32,9 @@ def health():
 @app.post("/process")
 async def process_media(
     file: UploadFile = File(...),
-    ai_provider: str = Form("gemini")
+    ai_provider: str = Form("gemini"),
+    master_audio: bool = Form(False),
+    separate_vocals: bool = Form(False)
 ):
     if not file.filename:
         return JSONResponse(status_code=400, content={"error": "No file uploaded"})
@@ -57,9 +59,15 @@ async def process_media(
             env["LYRISEE_LLM"] = ai_provider
             env["PYTHONUNBUFFERED"] = "1"  # force line-by-line stdout flush
 
+            cmd_args = ["python3", "-u", processor_path, temp_path, "-o", out_json]
+            if master_audio:
+                cmd_args.append("--master")
+            if separate_vocals:
+                cmd_args.append("--separate")
+
             # asyncio subprocess — never blocks the event loop
             proc = await asyncio.create_subprocess_exec(
-                "python3", "-u", processor_path, temp_path, "-o", out_json,
+                *cmd_args,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.STDOUT,
                 env=env,

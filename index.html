@@ -4,24 +4,1751 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Lyrisee — Kinetic Typography Engine</title>
-<meta name="description" content="A kinetic typography engine that synchronizes lyrics to audio or video." />
-<!-- Meta tags and styles from original -->
+  <meta name="description" content="A kinetic typography engine that synchronizes lyrics to audio or video." />
+  <meta property="og:title" content="Lyrisee — Kinetic Typography Engine" />
+  <meta property="og:description" content="A kinetic typography engine that synchronizes lyrics to audio or video." />
+  <meta property="og:url" content="https://lyrisee.com/" />
+  <meta property="og:site_name" content="Lyrisee" />
+  <meta property="og:image" content="https://lyrisee.com/preview.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Lyrisee — Kinetic Typography Engine" />
+  <meta name="twitter:description" content="A kinetic typography engine that synchronizes lyrics to audio or video." />
+  <meta name="twitter:image" content="https://lyrisee.com/preview.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo+Black&family=Dancing+Script:wght@700&family=Inter:wght@400;600;800;900&display=swap" rel="stylesheet">
+<script defer src="https://cdn.vercel-insights.com/v1/script.js"></script>
 <style>
-  /* Full original styles copied */
-  :root{--ink:#ECEAE4; --dim:#8C8A84; --faint:#6f6e69; --bg:#000;}
-  /* ... (all CSS preserved) */
+  :root{
+    --ink:#ECEAE4; --dim:#8C8A84; --faint:#6f6e69; --bg:#000;
+    --line:rgba(236,234,228,.16); --panel:rgba(20,20,21,.86);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:var(--bg);overflow:hidden;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:var(--ink)}
+  #stage{position:fixed;inset:0;background:#000;transition:background-color .8s ease}
+  #three-canvas{position:absolute;inset:0;display:block}
+  /* render layers stay hidden until playback begins (no bleed behind the intro) */
+  #three-canvas,#dom-layer,#embody-layer{opacity:0;transition:opacity .5s ease}
+  #stage.playing #three-canvas,#stage.playing #dom-layer,#stage.playing #embody-layer{opacity:1}
+  /* Embodiment layer: words-as-imagery + line reconstruction (DOM — works without WebGL) */
+  #embody-layer{position:absolute;inset:0;display:none;overflow:hidden}
+  .ew{position:absolute;left:50%;top:50%;font-family:'Archivo Black','Inter',sans-serif;font-weight:900;white-space:nowrap;
+      font-size:clamp(14px,2.2vw,32px);color:var(--ink,#EDEAE4);line-height:1;will-change:transform,opacity;
+      transition:transform .5s cubic-bezier(.18,.9,.2,1), opacity .35s ease, color .15s, text-shadow .15s}
+  .ew.fn{color:#7c8aa0}
+  .ew.sung{color:#fff;text-shadow:0 0 24px rgba(255,255,255,.6),0 0 6px rgba(255,255,255,.5);z-index:3}
+  /* cinematic word-art: embedded symbol + figure for scene lines (cage, peace, etc.) */
+  .esym{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) scale(.5);font-size:min(44vh,44vw);
+        color:#EDEAE4;opacity:0;z-index:0;pointer-events:none;
+        transition:opacity .6s ease, transform .8s cubic-bezier(.2,.85,.2,1)}
+  .esym.on{opacity:.9;transform:translate(-50%,-50%) scale(1)}
+  .efig{position:absolute;left:50%;top:56%;transform:translate(-50%,-50%);font-size:min(30vh,30vw);
+        opacity:.45;z-index:0;pointer-events:none;filter:grayscale(1) contrast(.8);
+        transition:transform 1s cubic-bezier(.2,.85,.2,1), opacity .8s ease}
+  .efig.free{transform:translate(-50%,-160%);opacity:0}
+  /* Director per-word art-direction: register / glow / icon (Die Alone vocabulary) */
+  .ew.script{font-family:'Dancing Script','Inter',cursive;font-weight:700;color:var(--accent,#ff9ec4);text-shadow:0 0 16px rgba(0,0,0,.0)}
+  .ew.heavy{font-family:'Archivo Black','Inter',sans-serif;font-weight:900;letter-spacing:.01em}
+  .ew.glow{text-shadow:0 0 20px rgba(255,255,255,.65),0 0 8px rgba(255,255,255,.5)}
+  .ew .ic{display:inline-block;font-size:1.5em;line-height:1;vertical-align:-0.12em;margin:0 .06em;filter:drop-shadow(0 0 10px rgba(255,255,255,.45))}
+  /* DOM lyric layer (rhyme scheme / karaoke) */
+  /* Rhyme Scheme = the emNoFavors rhyme-map: left-aligned lyric block, true rhyme families boxed in color */
+  #dom-layer{position:absolute;inset:0;display:none;flex-direction:column;justify-content:flex-start;align-items:flex-start;
+             padding:64px 6vw 6vh;overflow:hidden;background:#d7d7d4;color:#141414;pointer-events:none}
+  #dom-head{position:absolute;top:0;left:0;right:0;height:46px;background:#0c0c0c;color:#f4f1ea;display:flex;align-items:center;
+            justify-content:space-between;padding:0 22px;font-family:'Archivo Black','Inter',sans-serif;font-size:14px;letter-spacing:.05em;text-transform:uppercase;z-index:2}
+  #dom-head .lg{font-family:'Anton','Archivo Black',sans-serif;color:#fff;letter-spacing:.07em;font-size:18px}
+  #dom-lines{width:100%;max-width:1240px;will-change:transform;transition:transform .55s cubic-bezier(.2,.8,.2,1)}
+  #dom-layer .line{line-height:1.42;margin:.03em 0;opacity:.4;transition:opacity .3s ease}
+  #dom-layer .line.active{opacity:1}
+  #dom-layer .w{display:inline-block;font-family:'Inter',sans-serif;font-weight:800;font-size:clamp(15px,2.25vw,32px);
+                padding:.03em .12em;border-radius:.14em;color:#161616;white-space:pre}
+  #dom-layer .w.rg{color:#0a0a0a}
+  #dom-layer .w.sung{outline:2px solid #111;outline-offset:1px}
+  /* Intro / ingest */
+  #intro{position:absolute;inset:0;z-index:40;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:5vh 6vw;
+          background:radial-gradient(120% 120% at 50% 38%, rgba(16,16,17,.55), rgba(0,0,0,.94));transition:opacity .6s ease}
+  #intro h1{font-family:'Anton',sans-serif;font-weight:400;letter-spacing:.06em;font-size:clamp(40px,8vw,118px);margin:0;line-height:.92;color:#F4F1EA}
+  #intro .sub{color:var(--dim);font-size:clamp(12px,1.4vw,16px);letter-spacing:.34em;text-transform:uppercase;margin-top:12px}
+  #ingest{margin-top:34px;width:min(560px,90vw);display:flex;flex-direction:column;align-items:stretch;gap:14px}
+  .drop{border:1.5px dashed var(--line);border-radius:14px;padding:30px 22px;cursor:pointer;color:var(--dim);font-size:15px;transition:border-color .2s,background .2s,color .2s}
+  .drop:hover,.drop.over{border-color:#bdbab2;background:rgba(236,234,228,.04);color:var(--ink)}
+  .drop b{color:var(--ink);font-weight:800}
+  .row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+  .ghost{font-family:'Inter';font-weight:600;font-size:13px;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:10px 14px;cursor:pointer;transition:border-color .15s}
+  .ghost:hover{border-color:#7a786f}
+  .ghost:disabled{opacity:.45;cursor:not-allowed}
+  #ingestStatus{min-height:1.3em;font-size:12.5px;color:var(--dim);line-height:1.5}
+  #logPanel{display:none;margin-top:8px;background:#0a0a0a;border:1px solid var(--line);border-radius:8px;padding:8px 10px;max-height:140px;overflow-y:auto;font-family:'Courier New',monospace;font-size:11px;line-height:1.55;color:#8a8}
+  #logPanel .log-line{white-space:pre-wrap;word-break:break-all}
+  #logPanel .log-err{color:#f87}
+  #logPanel .log-done{color:#4f9}
+  #logTimer{display:inline-block;font-variant-numeric:tabular-nums;color:var(--faint);font-size:11px;margin-left:6px}
+  #playBtn{align-self:center;margin-top:2px;font-family:'Inter';font-weight:800;font-size:16px;letter-spacing:.03em;padding:14px 46px;border-radius:999px;border:0;cursor:pointer;
+           color:#0b0b0c;background:#F2EFE8;box-shadow:0 8px 30px rgba(0,0,0,.5);transition:transform .15s, box-shadow .15s, background .15s, opacity .2s}
+  #playBtn:hover:not(:disabled){transform:translateY(-2px);background:#fff;box-shadow:0 14px 40px rgba(0,0,0,.6)}
+  #playBtn:disabled{opacity:.4;cursor:not-allowed}
+  .demo{font-size:12.5px;color:var(--faint)}
+  .tog-track{display:inline-flex;align-items:center;width:36px;height:20px;border-radius:10px;background:#2a2a2b;border:1px solid var(--line);transition:background .2s;flex-shrink:0}
+  .tog-track.on{background:#4a9eff;border-color:#4a9eff}
+  .tog-thumb{width:14px;height:14px;border-radius:50%;background:#fff;margin-left:2px;transition:margin-left .2s;flex-shrink:0}
+  .tog-track.on .tog-thumb{margin-left:18px}
+  .demo a{color:var(--dim);text-decoration:underline;cursor:pointer}
+  .demo a:hover{color:var(--ink)}
+  #introNote{margin-top:24px;font-size:11.5px;color:var(--faint);max-width:520px;line-height:1.6}
+  /* Top bar */
+  #topbar{position:absolute;top:0;left:0;right:0;z-index:30;display:flex;align-items:center;gap:14px;padding:14px 18px;
+          background:linear-gradient(180deg,rgba(0,0,0,.55),rgba(0,0,0,0));opacity:0;transition:opacity .3s;pointer-events:none}
+  #stage.playing #topbar{opacity:1;pointer-events:auto}
+  .brand{font-family:'Anton';font-size:20px;letter-spacing:.05em;color:#F4F1EA}
+  .brand small{font-family:'Inter';font-weight:600;font-size:11px;letter-spacing:.22em;color:var(--dim);margin-left:8px;text-transform:uppercase}
+  .track{font-size:12px;color:var(--dim);max-width:230px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .spacer{flex:1}
+  select{font-family:'Inter';font-weight:600;font-size:13px;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:9px 12px;cursor:pointer;outline:none}
+  select:hover{border-color:#7a786f}
+  .field{display:flex;flex-direction:column;gap:3px}
+  .field label{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--dim);padding-left:2px}
+  #constructDesc{max-width:340px;font-size:11.5px;color:var(--dim);line-height:1.45}
+  /* Transport */
+  #transport{position:absolute;left:0;right:0;bottom:0;z-index:30;display:flex;align-items:center;gap:14px;padding:16px 20px 18px;
+             background:linear-gradient(0deg,rgba(0,0,0,.6),rgba(0,0,0,0));opacity:0;transition:opacity .3s;pointer-events:none}
+  #stage.playing #transport{opacity:1;pointer-events:auto}
+  #ppBtn{width:44px;height:44px;border-radius:50%;border:0;background:#F2EFE8;color:#111;font-size:18px;cursor:pointer;flex:0 0 auto;display:flex;align-items:center;justify-content:center}
+  #ppBtn:hover{background:#fff}
+  #scrub{flex:1;-webkit-appearance:none;appearance:none;height:6px;border-radius:3px;background:#2a2a2b;cursor:pointer}
+  #scrub::-webkit-slider-thumb{-webkit-appearance:none;width:15px;height:15px;border-radius:50%;background:#fff;box-shadow:0 0 0 4px rgba(236,234,228,.18)}
+  #scrub::-moz-range-thumb{width:15px;height:15px;border:0;border-radius:50%;background:#fff}
+  #time{font-variant-numeric:tabular-nums;font-size:12.5px;color:var(--dim);min-width:96px;text-align:center}
+  .mini{font-size:12px;color:var(--dim);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px 10px;cursor:pointer}
+  .mini:hover{border-color:#7a786f;color:var(--ink)}
+  #hint{position:absolute;bottom:84px;left:50%;transform:translateX(-50%);z-index:25;font-size:11px;letter-spacing:.1em;color:var(--faint);opacity:0;transition:opacity .4s}
+  #stage.playing #hint{opacity:.8}
+  /* Lyric editor (human-in-the-loop transcript correction) */
+  #editor{position:absolute;inset:0;z-index:50;display:none;flex-direction:column;background:rgba(8,8,9,.97);backdrop-filter:blur(3px);padding:3.4vh 4vw}
+  #editor.open{display:flex}
+  .ed-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+  .ed-head span{font-family:'Anton';font-size:24px;letter-spacing:.04em;color:#F4F1EA}
+  .ed-hint{color:var(--dim);font-size:12.5px;margin-bottom:14px;max-width:780px;line-height:1.55}
+  #edList{flex:1;overflow:auto;display:flex;flex-direction:column;gap:7px;padding-right:6px}
+  .ed-row{display:flex;gap:8px;align-items:center}
+  .ed-t{width:78px;flex:0 0 auto;font-variant-numeric:tabular-nums;background:#161617;border:1px solid var(--line);color:var(--dim);border-radius:7px;padding:8px;font-size:12px}
+  .ed-x{flex:1;background:#161617;border:1px solid var(--line);color:var(--ink);border-radius:7px;padding:9px 11px;font-size:14px;font-family:'Inter'}
+  .ed-x:focus,.ed-t:focus{outline:none;border-color:#7a786f}
+  .ed-del{flex:0 0 auto;width:30px;height:30px;border-radius:7px;border:1px solid var(--line);background:transparent;color:var(--dim);cursor:pointer;font-size:16px;line-height:1}
+  .ed-del:hover{color:#fff;border-color:#7a786f}
+  .ed-foot{display:flex;align-items:center;gap:10px;margin-top:14px;flex-wrap:wrap}
+  .ghost-solid{font-family:'Inter';font-weight:800;font-size:14px;color:#0b0b0c;background:#F2EFE8;border:0;border-radius:9px;padding:11px 22px;cursor:pointer}
+  .ghost-solid:hover{background:#fff}
+
+  .bg-plain { background: #111; }
+  .bg-generic { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%); }
+  .bg-textured { background: radial-gradient(circle at center, #2b2b2c 0%, #111 100%), url('data:image/svg+xml;utf8,<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"><filter id="noiseFilter"><feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(%23noiseFilter)" opacity="0.1"/></svg>'); background-blend-mode: overlay; }
+
+  #watermarkUI{position:absolute;bottom:30px;right:30px;z-index:45;font-family:'Anton',sans-serif;font-size:32px;letter-spacing:0.05em;color:rgba(255,255,255,0.3);pointer-events:none;display:none;}
+  #watermarkUI.show{display:block;}
 </style>
 </head>
 <body>
 <div id="stage">
-  <!-- Full original HTML structure -->
+  <video id="bgVideo" playsinline style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity 0.5s;z-index:0;"></video>
+  <div id="bgLayer" style="position:absolute;inset:0;z-index:0;opacity:0;transition:opacity 0.5s;background-size:cover;background-position:center;"></div>
   <canvas id="three-canvas"></canvas>
-  <!-- Intro, ingest, etc. -->
+  <div id="dom-layer"></div>
+  <div id="embody-layer"></div>
+
+  <div id="topbar">
+    <div class="brand">LYRISEE<small>Kinetic Typography</small></div>
+    <div class="track" id="trackName"></div>
+    <div class="spacer"></div>
+    <button id="editBtn" class="mini" title="Edit lyrics / fix transcription">✎ Edit lyrics</button>
+        <div class="field">
+      <label for="bgSel">Background</label>
+      <select id="bgSel">
+        <option value="theme">Theme Default</option>
+        <option value="plain">Plain</option>
+        <option value="generic">Generic</option>
+        <option value="textured">Textured</option>
+        <option value="video" id="optVideo" style="display:none">Uploaded Video</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="constructSel">Construct</label>
+      <select id="constructSel"></select>
+    </div>
+    <div id="constructDesc"></div>
+  </div>
+
+  <div id="plot-layer" style="display:none; position:fixed; inset:0; z-index:60; background:rgba(0,0,0,0.8); cursor:crosshair;">
+    <div id="plot-hint" style="position:absolute; top:20px; left:50%; transform:translateX(-50%); color:#fff; font-family:'Inter',sans-serif; background:rgba(0,0,0,0.6); padding:10px 20px; border-radius:8px; pointer-events:none;">Tap where the next word should appear (ESC to cancel)</div>
+  </div>
+
+  <div id="editor">
+    <div class="ed-head"><span>Edit Lyrics</span><button id="edClose" class="mini">Close</button></div>
+    <div class="ed-hint">Fix any mis-transcribed words — each row is one line. Edit the text, nudge a line's start time (seconds) if needed, or add / delete lines. <b>Apply &amp; re-render</b> updates the visual live; <b>Download</b> saves a corrected lyric_data.json (rhymes, POS &amp; word-forms are re-derived from your edits).</div>
+    <div id="edList"></div>
+    <div class="ed-foot">
+      <button id="edAdd" class="mini">+ Add line</button>
+      <span class="spacer"></span>
+      <button id="edDownload" class="mini">⤓ Download corrected .json</button>
+      <button id="edApply" class="ghost-solid">Apply &amp; re-render</button>
+    </div>
+  </div>
+
+  <div id="hint">SPACE play/pause · ← → seek · F fullscreen</div>
+
+  <div id="approvalModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:9999; flex-direction:column; align-items:center; justify-content:center;">
+    <div style="background:var(--panel); border:1px solid var(--line); padding:24px; border-radius:12px; width:90%; max-width:600px;">
+      <h3 style="margin-top:0; font-size:16px;">Approve Line</h3>
+      <p style="font-size:12px; color:var(--dim); margin-bottom:12px;">Review the transcribed line. Edit if necessary, then approve to continue playing. The original will be kept for comparison.</p>
+      <div style="margin-bottom:8px; font-size:11px; color:var(--dim);">Original: <span id="apprOrig" style="color:var(--ink);"></span></div>
+      <textarea id="apprInput" style="width:100%; height:80px; background:#000; color:var(--ink); border:1px solid var(--line); border-radius:6px; padding:12px; font-family:inherit; font-size:16px; margin-bottom:16px;"></textarea>
+      <div style="display:flex; justify-content:flex-end; gap:12px;">
+        <button id="apprBtn" class="ghost" style="border-color:#4CAF50; color:#4CAF50;">Approve &amp; Continue</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="transport">
+    <button id="ppBtn" title="Play/Pause (Space)">▶</button>
+    <input id="scrub" type="range" min="0" max="1000" value="0" step="1">
+    <div id="time">0:00 / 0:00</div>
+    <div style="display:flex; align-items:center; gap:6px;">
+      <span style="font-size:11px; color:var(--dim);">Offset:</span>
+      <input id="offsetSlider" type="range" min="-1000" max="1000" value="-3" step="1" style="width:60px;">
+      <span id="offsetVal" style="font-size:11px; color:var(--dim); font-variant-numeric:tabular-nums; min-width:36px;">-3ms</span>
+    </div>
+    <button id="audioBtn" class="mini" title="Load / change audio">♪ Audio</button>
+    <input id="audioInput2" type="file" accept="audio/*,video/*" style="display:none">
+    <button id="fsBtn" class="mini" title="Fullscreen (F)">⛶</button>
+    <button id="exportBtn" class="ghost" style="margin-left:14px; background:var(--panel);">Export Video</button>
+  </div>
+
+  <div id="exportModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.85); z-index:9999; flex-direction:column; align-items:center; justify-content:center;">
+    <div style="background:var(--panel); border:1px solid var(--line); padding:32px; border-radius:12px; width:90%; max-width:500px; text-align:center;">
+      <h2 style="font-family:'Anton'; font-weight:400; font-size:28px; margin-top:0; color:#F4F1EA; letter-spacing:0.04em;">Export Video</h2>
+      <p style="font-size:13px; color:var(--dim); line-height:1.6; margin-bottom:24px;">Download a watermarked 15-second sample, or unlock the full unwatermarked video.</p>
+      <div style="display:flex; flex-direction:column; gap:12px;">
+        <button id="exportSampleBtn" class="ghost" style="padding:16px; font-size:14px; border-color:#888;">Download Sample (15s, Watermarked)</button>
+        <button id="exportFullBtn" class="ghost-solid" style="padding:16px; font-size:14px; background:#4a9eff; color:#fff; border:none;">Unlock Full Video (No Watermark) - $9.99</button>
+        <button id="exportFullPaidBtn" class="ghost-solid" style="padding:16px; font-size:14px; background:#4CAF50; color:#fff; border:none; display:none;">Download Full Video</button>
+      </div>
+      <div style="margin-top:24px;">
+        <button id="exportCancelBtn" class="mini" style="background:transparent; border:none;">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="exportProgressModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.9); z-index:10000; flex-direction:column; align-items:center; justify-content:center;">
+    <div style="text-align:center;">
+      <h2 style="font-family:'Anton'; font-weight:400; font-size:24px; color:#F4F1EA; margin-bottom:12px;">Recording Video...</h2>
+      <div id="exportStatus" style="font-size:13px; color:var(--dim); font-variant-numeric:tabular-nums; margin-bottom:24px;">0:00 / 0:15</div>
+      <button id="exportStopBtn" class="ghost" style="border-color:#f87; color:#f87;">Stop & Cancel</button>
+    </div>
+  </div>
+
+  <div id="watermarkUI">LYRISEE</div>
+
+  <div id="intro">
+    <h1>LYRISEE</h1>
+    <div class="sub">Kinetic Typography · Any Song</div>
+    <div id="ingest">
+      <div class="drop" id="drop">Drop an <b>audio or video file</b> here, or click to choose
+        <input id="audioInput" type="file" accept="audio/*,video/*" hidden>
+      </div>
+      <div class="row" style="justify-content:space-between;align-items:center;gap:12px;">
+        <button class="ghost" id="jsonBtn">+ Add lyric data (.json / .txt)</button>
+        <input id="jsonInput" type="file" accept=".json,application/json,.txt,text/plain" hidden>
+        <label id="cloudToggleLabel" style="display:flex;align-items:center;gap:7px;cursor:pointer;user-select:none;">
+          <span style="font-size:12px;color:var(--dim);">Browser</span>
+          <span class="tog-track" id="cloudToggleTrack">
+            <span class="tog-thumb"></span>
+          </span>
+          <span style="font-size:12px;color:var(--ink);font-weight:600;">Cloud AI</span>
+          <input type="checkbox" id="cloudToggle" checked style="display:none;">
+        </label>
+      </div>
+      <div id="cloudControls" class="row" style="margin-top:8px;">
+        <input type="text" id="apiUrlInput" value="https://acecalisto3-lyrisee.hf.space/process" placeholder="HuggingFace Space URL" style="flex:1;padding:6px;font-size:12px;background:#111;color:var(--ink);border:1px solid var(--line);border-radius:4px;">
+        <select id="aiProviderSel" style="padding:6px;font-size:12px;background:#111;color:var(--ink);border:1px solid var(--line);border-radius:4px;">
+          <option value="gemini">Gemini (Google)</option>
+          <option value="ollama">Ollama Cloud (DeepSeek)</option>
+          <option value="anthropic">Claude (Anthropic)</option>
+          <option value="openai">ChatGPT (OpenAI)</option>
+        </select>
+      </div>
+      <button class="ghost" id="processBtn" style="margin-top:8px;width:100%;justify-content:center;">⚡ Run Cloud AI</button>
+      <div id="ingestStatus"></div>
+      <div id="logPanel"></div>
+      <button id="playBtn" disabled>▶ Play</button>
+
+      <div class="row">
+        <label style="cursor:pointer; display:flex; align-items:center; gap:8px;">
+          <input type="checkbox" id="masterAudioCheck" checked>
+          <span style="font-size:12px; color:var(--dim);">Clean/Master Audio (Removes truck noise/hiss)</span>
+        </label>
+        <label style="cursor:pointer; display:flex; align-items:center; gap:8px;">
+          <input type="checkbox" id="separateVocalsCheck">
+          <span style="font-size:12px; color:var(--dim);">Isolate Vocals (Demucs)</span>
+        </label>
+        <label style="cursor:pointer; display:flex; align-items:center; gap:8px;">
+          <input type="checkbox" id="approvalModeCheck">
+          <span style="font-size:12px; color:var(--dim);">Approval Mode (line-by-line checker)</span>
+        </label>
+      </div>
+
+      <div class="demo">No track handy? <a id="demoLink">Load the demo</a></div>
+    </div>
+    <div id="introNote">Feed it any song. Drop the audio or video, then add the <b>lyric_data.json</b> your pipeline produces
+      (words with start / end / pos, optional beats) — or auto-transcribe in the browser. The engine reads the lyrics' intent and arranges them as kinetic visual aid.</div>
+  </div>
 </div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/FontLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/geometries/TextGeometry.js"></script>
 <script>
-// Full original script with try { boot(); } catch(e) { console.error(e); document.body.innerHTML += '<div style="color:white;padding:20px">UI Load Error - Refresh or check console.</div>'; }
-console.log('Lyrisee boot initiated');
+/* ============================================================================
+   LYRISEE — Kinetic Typography Engine (song-agnostic)
+   Ingest ANY audio + lyric_data.json (or in-browser transcription) ->
+   layered intent understanding -> artistic kinetic arrangement -> render.
+   Two render layers: WebGL (kinetic + semantic word-forms) and DOM (rhyme karaoke).
+   ========================================================================== */
+/* Sandboxed-iframe guard: some browser extensions (crypto wallets, etc.) inject scripts that read
+   localStorage and throw "SecurityError ... lacks the 'allow-same-origin' flag" inside our sandbox.
+   That is the extension's failure, not ours (this engine never uses localStorage). Swallow ONLY those
+   specific benign errors so they don't surface as "Uncaught" or interrupt anything. */
+(function(){try{
+  var BENIGN=/localStorage|sessionStorage|allow-same-origin|sandboxed/i;
+  window.addEventListener('error',function(e){var m=(e&&e.message)||'';if(BENIGN.test(m)){e.preventDefault();if(e.stopImmediatePropagation)e.stopImmediatePropagation();return true;}},true);
+  window.addEventListener('unhandledrejection',function(e){var r=e&&e.reason;var m=(r&&(r.message||r))||'';if(BENIGN.test(String(m)))e.preventDefault();});
+}catch(_){ }})();
+const DEMO_DATA = /*__LYRIC_DATA__*/{"words":[{"text":"Go","start":0.9,"end":1.0,"pos":"VERB"},{"text":"back","start":1.0,"end":1.28,"pos":"ADV"},{"text":"to","start":1.28,"end":1.54,"pos":"ADP"},{"text":"my","start":1.54,"end":1.68,"pos":"PRON"},{"text":"old","start":1.68,"end":1.88,"pos":"ADJ"},{"text":"ways,","start":1.88,"end":2.3,"pos":"NOUN"},{"text":"trying","start":2.8,"end":2.96,"pos":"VERB"},{"text":"to","start":2.96,"end":3.14,"pos":"PART"},{"text":"just","start":3.14,"end":3.32,"pos":"ADV"},{"text":"find","start":3.32,"end":3.54,"pos":"VERB"},{"text":"some","start":3.54,"end":3.82,"pos":"DET"},{"text":"peace.","start":3.82,"end":4.28,"pos":"NOUN"},{"text":"Don't","start":4.8,"end":4.96,"pos":"AUX"},{"text":"want","start":4.96,"end":5.16,"pos":"VERB"},{"text":"to","start":5.16,"end":5.26,"pos":"PART"},{"text":"be","start":5.26,"end":5.42,"pos":"AUX"},{"text":"trapped","start":5.48,"end":5.76,"pos":"VERB"},{"text":"in","start":5.76,"end":5.96,"pos":"ADP"},{"text":"a","start":5.96,"end":6.04,"pos":"DET"},{"text":"small","start":6.04,"end":6.32,"pos":"ADJ"},{"text":"cage.","start":6.32,"end":6.68,"pos":"NOUN"},{"text":"Now","start":7.06,"end":7.1,"pos":"ADV"},{"text":"imagine","start":7.1,"end":7.52,"pos":"VERB"},{"text":"if","start":7.52,"end":7.76,"pos":"SCONJ"},{"text":"I","start":7.76,"end":8.0,"pos":"PRON"},{"text":"was","start":8.0,"end":8.26,"pos":"AUX"},{"text":"free.","start":8.26,"end":8.58,"pos":"ADJ"},{"text":"Oh,","start":8.84,"end":8.9,"pos":"INTJ"},{"text":"just","start":9.22,"end":9.46,"pos":"ADV"},{"text":"picture","start":9.46,"end":9.74,"pos":"NOUN"},{"text":"if","start":9.74,"end":10.02,"pos":"SCONJ"},{"text":"I","start":10.1,"end":10.24,"pos":"PRON"},{"text":"was","start":10.24,"end":10.48,"pos":"AUX"},{"text":"famous.","start":10.48,"end":10.9,"pos":"ADJ"},{"text":"Then","start":11.44,"end":11.52,"pos":"ADV"},{"text":"envision","start":11.52,"end":11.9,"pos":"VERB"},{"text":"the","start":11.9,"end":12.2,"pos":"DET"},{"text":"height","start":12.2,"end":12.44,"pos":"NOUN"},{"text":"I'd","start":12.44,"end":12.88,"pos":"PRON"},{"text":"reach.","start":12.88,"end":12.98,"pos":"VERB"},{"text":"Now","start":13.7,"end":13.82,"pos":"ADV"},{"text":"try","start":13.82,"end":14.0,"pos":"VERB"},{"text":"to","start":14.0,"end":14.08,"pos":"PART"},{"text":"find","start":14.08,"end":14.28,"pos":"VERB"},{"text":"the","start":14.28,"end":14.42,"pos":"DET"},{"text":"path","start":14.42,"end":14.62,"pos":"NOUN"},{"text":"to","start":14.62,"end":14.86,"pos":"ADP"},{"text":"the","start":14.86,"end":14.96,"pos":"DET"},{"text":"way","start":14.96,"end":15.18,"pos":"NOUN"},{"text":"up.","start":15.18,"end":15.52,"pos":"ADV"},{"text":"Way","start":15.84,"end":15.94,"pos":"NOUN"},{"text":"up.","start":15.94,"end":16.42,"pos":"ADP"},{"text":"Dang.","start":16.72,"end":16.9,"pos":"PUNCT"},{"text":"I'm","start":17.22,"end":17.28,"pos":"PRON"},{"text":"sick","start":17.28,"end":17.44,"pos":"ADJ"},{"text":"of","start":17.44,"end":17.56,"pos":"ADP"},{"text":"these","start":17.56,"end":17.7,"pos":"DET"},{"text":"bad","start":17.7,"end":18.3,"pos":"ADJ"},{"text":"days","start":18.3,"end":18.64,"pos":"NOUN"},{"text":"and","start":18.64,"end":18.9,"pos":"CCONJ"},{"text":"organize.","start":18.9,"end":19.28,"pos":"VERB"},{"text":"Every","start":19.78,"end":19.96,"pos":"DET"},{"text":"little","start":19.96,"end":20.2,"pos":"ADJ"},{"text":"pad","start":20.2,"end":20.48,"pos":"NOUN"},{"text":"page","start":20.48,"end":20.82,"pos":"NOUN"},{"text":"is","start":20.82,"end":21.04,"pos":"AUX"},{"text":"a","start":21.04,"end":21.1,"pos":"DET"},{"text":"bar","start":21.1,"end":21.28,"pos":"NOUN"},{"text":"fight.","start":21.28,"end":21.56,"pos":"NOUN"},{"text":"But,","start":22.0,"end":22.16,"pos":"CCONJ"},{"text":"a","start":22.26,"end":22.5,"pos":"DET"},{"text":"cash","start":22.5,"end":22.78,"pos":"NOUN"},{"text":"made","start":22.78,"end":22.98,"pos":"VERB"},{"text":"paid","start":22.98,"end":23.36,"pos":"VERB"},{"text":"all","start":23.36,"end":23.54,"pos":"DET"},{"text":"price.","start":23.54,"end":23.86,"pos":"NOUN"},{"text":"Now","start":24.22,"end":24.32,"pos":"ADV"},{"text":"I","start":24.32,"end":24.38,"pos":"PRON"},{"text":"feel","start":24.38,"end":24.54,"pos":"VERB"},{"text":"the","start":24.54,"end":24.68,"pos":"DET"},{"text":"pad","start":24.68,"end":24.92,"pos":"NOUN"},{"text":"pay,","start":24.92,"end":25.18,"pos":"NOUN"},{"text":"but","start":25.38,"end":25.38,"pos":"CCONJ"},{"text":"the","start":25.38,"end":25.56,"pos":"PRON"},{"text":"aren't","start":25.56,"end":25.92,"pos":"AUX"},{"text":"lights.","start":25.92,"end":26.12,"pos":"NOUN"},{"text":"No,","start":26.44,"end":26.56,"pos":"INTJ"},{"text":"I","start":26.8,"end":26.92,"pos":"PRON"},{"text":"stand","start":26.92,"end":27.1,"pos":"VERB"},{"text":"by.","start":27.1,"end":27.4,"pos":"ADP"},{"text":"Every","start":27.58,"end":27.7,"pos":"DET"},{"text":"bar","start":27.7,"end":28.0,"pos":"NOUN"},{"text":"I","start":28.0,"end":28.42,"pos":"PRON"},{"text":"grow.","start":28.42,"end":28.76,"pos":"VERB"},{"text":"My","start":29.14,"end":29.26,"pos":"PRON"},{"text":"depiction","start":29.26,"end":29.6,"pos":"NOUN"},{"text":"of","start":29.6,"end":29.84,"pos":"ADP"},{"text":"a","start":29.84,"end":29.94,"pos":"DET"},{"text":"hard","start":29.94,"end":30.26,"pos":"ADJ"},{"text":"life.","start":30.26,"end":30.6,"pos":"NOUN"},{"text":"Don't","start":30.92,"end":31.02,"pos":"AUX"},{"text":"judge","start":31.02,"end":31.22,"pos":"VERB"},{"text":"me.","start":31.22,"end":31.48,"pos":"PRON"},{"text":"You","start":31.56,"end":31.62,"pos":"PRON"},{"text":"know,","start":31.62,"end":31.66,"pos":"VERB"},{"text":"I'm","start":31.7,"end":31.74,"pos":"PRON"},{"text":"feeling","start":31.74,"end":31.82,"pos":"VERB"},{"text":"like","start":31.82,"end":32.1,"pos":"SCONJ"},{"text":"I'm","start":32.1,"end":32.26,"pos":"PRON"},{"text":"hot.","start":32.26,"end":32.44,"pos":"ADJ"},{"text":"However,","start":32.58,"end":32.72,"pos":"ADV"},{"text":"don't","start":32.78,"end":32.92,"pos":"AUX"},{"text":"give","start":32.92,"end":33.04,"pos":"VERB"},{"text":"a","start":33.04,"end":33.2,"pos":"DET"},{"text":"fuck.","start":33.2,"end":33.3,"pos":"NOUN"},{"text":"And","start":33.58,"end":33.66,"pos":"CCONJ"},{"text":"I'm","start":33.66,"end":33.82,"pos":"PRON"},{"text":"the","start":33.82,"end":33.88,"pos":"DET"},{"text":"one","start":33.88,"end":34.02,"pos":"NOUN"},{"text":"they","start":34.02,"end":34.16,"pos":"PRON"},{"text":"got","start":34.16,"end":34.34,"pos":"VERB"},{"text":"all","start":34.34,"end":34.68,"pos":"DET"},{"text":"eyes","start":34.68,"end":35.18,"pos":"NOUN"},{"text":"on","start":35.18,"end":35.48,"pos":"ADP"},{"text":"all","start":35.48,"end":35.74,"pos":"ADV"},{"text":"about","start":35.74,"end":35.96,"pos":"ADP"},{"text":"the","start":35.96,"end":36.08,"pos":"DET"},{"text":"money.","start":36.08,"end":36.26,"pos":"NOUN"},{"text":"He's","start":36.48,"end":36.7,"pos":"PRON"},{"text":"so","start":36.72,"end":36.84,"pos":"ADV"},{"text":"pie","start":36.84,"end":37.3,"pos":"NOUN"},{"text":"-thought.","start":37.3,"end":37.58,"pos":"NOUN"},{"text":"Even","start":37.84,"end":37.98,"pos":"ADV"},{"text":"with","start":37.98,"end":38.18,"pos":"ADP"},{"text":"a","start":38.18,"end":38.34,"pos":"DET"},{"text":"flesh","start":38.42,"end":38.54,"pos":"NOUN"},{"text":"wound.","start":38.54,"end":38.82,"pos":"NOUN"},{"text":"Go","start":38.98,"end":39.1,"pos":"VERB"},{"text":"right","start":39.1,"end":39.54,"pos":"ADV"},{"text":"on","start":39.54,"end":39.9,"pos":"ADV"},{"text":"to","start":40.02,"end":40.16,"pos":"ADP"},{"text":"the","start":40.16,"end":40.26,"pos":"DET"},{"text":"next","start":40.26,"end":40.52,"pos":"ADJ"},{"text":"target","start":40.52,"end":40.88,"pos":"NOUN"},{"text":"to","start":40.88,"end":41.12,"pos":"ADP"},{"text":"all","start":41.12,"end":41.28,"pos":"DET"},{"text":"price.","start":41.28,"end":41.72,"pos":"NOUN"},{"text":"God.","start":41.94,"end":42.04,"pos":"PUNCT"},{"text":"Oh","start":42.26,"end":42.42,"pos":"INTJ"},{"text":"my","start":42.42,"end":42.8,"pos":"PRON"},{"text":"God.","start":42.8,"end":43.14,"pos":"PROPN"},{"text":"Mad","start":43.44,"end":43.6,"pos":"ADJ"},{"text":"like","start":43.6,"end":43.88,"pos":"ADP"},{"text":"who?","start":43.88,"end":44.22,"pos":"PRON"},{"text":"Float","start":44.72,"end":44.82,"pos":"VERB"},{"text":"like","start":44.82,"end":45.0,"pos":"ADP"},{"text":"what?","start":45.0,"end":45.28,"pos":"PRON"},{"text":"The","start":45.52,"end":45.52,"pos":"DET"},{"text":"press","start":45.6,"end":45.72,"pos":"NOUN"},{"text":"like","start":45.72,"end":46.1,"pos":"ADP"},{"text":"them?","start":46.1,"end":46.4,"pos":"PRON"},{"text":"No,","start":46.64,"end":46.74,"pos":"INTJ"},{"text":"I'm","start":47.1,"end":47.36,"pos":"PRON"},{"text":"not.","start":47.36,"end":47.6,"pos":"PART"},{"text":"Or","start":47.76,"end":47.82,"pos":"CCONJ"},{"text":"so","start":47.82,"end":48.0,"pos":"ADV"},{"text":"I","start":48.0,"end":48.4,"pos":"PRON"},{"text":"thought","start":48.4,"end":48.68,"pos":"VERB"},{"text":"until","start":48.68,"end":49.02,"pos":"SCONJ"},{"text":"I","start":49.02,"end":49.16,"pos":"PRON"},{"text":"wake","start":49.16,"end":49.36,"pos":"VERB"},{"text":"up","start":49.36,"end":49.64,"pos":"ADP"},{"text":"and","start":49.64,"end":49.86,"pos":"CCONJ"},{"text":"I'm","start":49.86,"end":50.02,"pos":"PRON"},{"text":"so","start":50.02,"end":50.2,"pos":"ADV"},{"text":"mind","start":50.2,"end":50.64,"pos":"NOUN"},{"text":"-boggling.","start":50.64,"end":51.1,"pos":"VERB"},{"text":"Go","start":51.24,"end":51.32,"pos":"AUX"},{"text":"find","start":51.32,"end":51.76,"pos":"VERB"},{"text":"raw","start":51.76,"end":52.04,"pos":"ADJ"},{"text":"smoke.","start":52.04,"end":52.38,"pos":"NOUN"},{"text":"My","start":52.74,"end":52.84,"pos":"PRON"},{"text":"thoughts","start":52.84,"end":53.2,"pos":"NOUN"},{"text":"sober","start":53.58,"end":53.68,"pos":"ADJ"},{"text":"again.","start":53.68,"end":54.06,"pos":"ADV"},{"text":"Go","start":54.48,"end":54.64,"pos":"VERB"},{"text":"try","start":54.64,"end":55.16,"pos":"VERB"},{"text":"and","start":55.16,"end":55.3,"pos":"CCONJ"},{"text":"get","start":55.3,"end":55.42,"pos":"VERB"},{"text":"a","start":55.42,"end":55.54,"pos":"DET"},{"text":"pinch","start":55.54,"end":55.72,"pos":"NOUN"},{"text":"dog.","start":55.72,"end":56.02,"pos":"NOUN"},{"text":"But","start":56.34,"end":56.42,"pos":"CCONJ"},{"text":"this","start":56.42,"end":56.5,"pos":"PRON"},{"text":"I","start":56.5,"end":56.64,"pos":"PRON"},{"text":"don't","start":56.64,"end":56.94,"pos":"AUX"},{"text":"remember","start":57.02,"end":57.2,"pos":"VERB"},{"text":"people.","start":57.2,"end":57.54,"pos":"NOUN"},{"text":"Oh,","start":57.84,"end":57.96,"pos":"INTJ"},{"text":"but","start":58.12,"end":58.16,"pos":"CCONJ"},{"text":"this","start":58.16,"end":58.34,"pos":"DET"},{"text":"shit","start":58.34,"end":58.48,"pos":"NOUN"},{"text":"nobody's","start":58.48,"end":58.94,"pos":"PRON"},{"text":"called.","start":58.94,"end":58.98,"pos":"VERB"},{"text":"You","start":59.0,"end":59.32,"pos":"PRON"},{"text":"know","start":59.32,"end":59.72,"pos":"VERB"},{"text":"what,","start":59.72,"end":59.72,"pos":"PRON"},{"text":"I'm","start":59.72,"end":59.72,"pos":"PRON"},{"text":"saying","start":59.72,"end":59.72,"pos":"VERB"},{"text":"I","start":59.72,"end":59.98,"pos":"PRON"},{"text":"rock","start":59.98,"end":60.18,"pos":"VERB"},{"text":"fuck","start":60.18,"end":60.46,"pos":"NOUN"},{"text":"that","start":60.46,"end":60.66,"pos":"PRON"},{"text":"you","start":60.66,"end":60.82,"pos":"PRON"},{"text":"know","start":60.82,"end":60.96,"pos":"VERB"},{"text":"what,","start":60.96,"end":61.08,"pos":"PRON"},{"text":"bold.","start":61.18,"end":61.36,"pos":"ADJ"},{"text":"And","start":61.44,"end":61.54,"pos":"CCONJ"},{"text":"then","start":61.54,"end":61.62,"pos":"ADV"},{"text":"come","start":61.62,"end":61.78,"pos":"VERB"},{"text":"get","start":61.78,"end":61.88,"pos":"VERB"},{"text":"you.","start":61.88,"end":62.1,"pos":"PRON"},{"text":"And","start":63.04,"end":63.14,"pos":"CCONJ"},{"text":"just","start":63.14,"end":63.32,"pos":"ADV"},{"text":"hold","start":63.32,"end":63.54,"pos":"VERB"},{"text":"it","start":63.54,"end":63.74,"pos":"PRON"},{"text":"and","start":63.74,"end":63.88,"pos":"CCONJ"},{"text":"everybody","start":63.88,"end":64.22,"pos":"PRON"},{"text":"blacked","start":64.22,"end":64.8,"pos":"VERB"},{"text":"out","start":64.8,"end":64.94,"pos":"ADP"},{"text":"like","start":64.94,"end":65.12,"pos":"ADP"},{"text":"the","start":65.12,"end":65.26,"pos":"DET"},{"text":"cops","start":65.3,"end":65.44,"pos":"NOUN"},{"text":"world.","start":65.44,"end":65.74,"pos":"NOUN"},{"text":"Again.","start":65.88,"end":66.08,"pos":"PUNCT"},{"text":"Hope","start":66.2,"end":66.26,"pos":"VERB"},{"text":"they","start":66.26,"end":66.34,"pos":"PRON"},{"text":"burn","start":66.4,"end":66.54,"pos":"VERB"},{"text":"it.","start":66.54,"end":66.62,"pos":"PRON"},{"text":"Hope","start":66.74,"end":66.82,"pos":"VERB"},{"text":"on","start":66.82,"end":67.06,"pos":"ADP"},{"text":"the","start":67.06,"end":67.18,"pos":"DET"},{"text":"cup","start":67.18,"end":67.34,"pos":"NOUN"},{"text":"of","start":67.36,"end":67.48,"pos":"ADP"},{"text":"Joe.","start":67.48,"end":67.68,"pos":"PROPN"},{"text":"Brogan","start":67.82,"end":68.2,"pos":"PROPN"},{"text":"is","start":68.2,"end":68.5,"pos":"AUX"},{"text":"good.","start":68.5,"end":68.72,"pos":"ADJ"},{"text":"This","start":68.94,"end":69.42,"pos":"PRON"},{"text":"is","start":69.42,"end":69.54,"pos":"AUX"},{"text":"some","start":69.54,"end":69.7,"pos":"DET"},{"text":"taste","start":69.7,"end":69.9,"pos":"NOUN"},{"text":"broke.","start":69.9,"end":70.2,"pos":"VERB"},{"text":"And","start":70.44,"end":70.44,"pos":"CCONJ"},{"text":"so","start":70.44,"end":70.54,"pos":"ADV"},{"text":"him","start":70.54,"end":70.72,"pos":"PRON"},{"text":"and","start":70.72,"end":70.8,"pos":"CCONJ"},{"text":"my","start":70.8,"end":70.96,"pos":"PRON"},{"text":"supposed","start":70.96,"end":71.26,"pos":"VERB"},{"text":"to","start":71.26,"end":71.56,"pos":"PART"},{"text":"use","start":71.56,"end":71.82,"pos":"VERB"},{"text":"all","start":71.82,"end":71.98,"pos":"PRON"},{"text":"of","start":71.98,"end":72.04,"pos":"ADP"},{"text":"this","start":72.04,"end":72.22,"pos":"DET"},{"text":"power","start":72.22,"end":72.42,"pos":"NOUN"},{"text":"to","start":72.42,"end":72.62,"pos":"PART"},{"text":"better","start":72.62,"end":72.92,"pos":"ADJ"},{"text":"people.","start":72.92,"end":73.24,"pos":"NOUN"},{"text":"We","start":73.32,"end":73.44,"pos":"PRON"},{"text":"want","start":73.44,"end":73.58,"pos":"VERB"},{"text":"one","start":73.58,"end":73.72,"pos":"NUM"},{"text":"better","start":73.72,"end":74.0,"pos":"ADJ"},{"text":"for","start":74.16,"end":74.26,"pos":"ADP"},{"text":"themselves.","start":74.26,"end":74.52,"pos":"PRON"},{"text":"It's","start":74.78,"end":74.94,"pos":"PRON"},{"text":"a","start":74.94,"end":74.98,"pos":"DET"},{"text":"ninky","start":74.98,"end":75.2,"pos":"ADJ"},{"text":"thing","start":75.2,"end":75.38,"pos":"NOUN"},{"text":"to","start":75.38,"end":75.52,"pos":"PART"},{"text":"choose.","start":75.52,"end":75.68,"pos":"VERB"},{"text":"Like","start":75.88,"end":75.98,"pos":"ADP"},{"text":"the","start":75.98,"end":76.08,"pos":"DET"},{"text":"fact","start":76.08,"end":76.22,"pos":"NOUN"},{"text":"that","start":76.22,"end":76.38,"pos":"SCONJ"},{"text":"I","start":76.38,"end":76.5,"pos":"PRON"},{"text":"don't","start":76.5,"end":76.66,"pos":"AUX"},{"text":"get","start":76.66,"end":76.8,"pos":"VERB"},{"text":"to","start":76.8,"end":76.92,"pos":"PART"},{"text":"sell","start":76.92,"end":77.06,"pos":"VERB"},{"text":"something","start":77.06,"end":77.24,"pos":"PRON"},{"text":"better.","start":77.24,"end":77.59,"pos":"ADJ"},{"text":"Me","start":77.78,"end":77.84,"pos":"PRON"},{"text":"that's","start":77.84,"end":78.1,"pos":"PRON"},{"text":"even","start":78.1,"end":78.24,"pos":"ADV"},{"text":"exponential","start":78.24,"end":78.6,"pos":"ADJ"},{"text":"sales.","start":78.6,"end":79.02,"pos":"NOUN"},{"text":"Never","start":79.38,"end":79.48,"pos":"ADV"},{"text":"have","start":79.48,"end":79.62,"pos":"VERB"},{"text":"a","start":79.62,"end":79.74,"pos":"DET"},{"text":"blended","start":79.76,"end":79.94,"pos":"ADJ"},{"text":"day","start":79.94,"end":80.14,"pos":"NOUN"},{"text":"to","start":80.14,"end":80.26,"pos":"PART"},{"text":"do","start":80.26,"end":80.38,"pos":"VERB"},{"text":"the","start":80.38,"end":80.48,"pos":"DET"},{"text":"thing.","start":80.48,"end":80.72,"pos":"NOUN"},{"text":"Send","start":80.82,"end":80.94,"pos":"VERB"},{"text":"some","start":80.94,"end":81.1,"pos":"DET"},{"text":"meat","start":81.1,"end":81.26,"pos":"NOUN"},{"text":"and","start":81.26,"end":81.4,"pos":"CCONJ"},{"text":"ninky","start":81.4,"end":81.52,"pos":"ADJ"},{"text":"team.","start":81.52,"end":81.8,"pos":"NOUN"},{"text":"But","start":81.92,"end":81.94,"pos":"CCONJ"},{"text":"no,","start":81.94,"end":82.06,"pos":"INTJ"},{"text":"it","start":82.08,"end":82.2,"pos":"PRON"},{"text":"was","start":82.2,"end":82.46,"pos":"AUX"},{"text":"dope.","start":82.46,"end":82.62,"pos":"NOUN"},{"text":"You","start":82.62,"end":82.72,"pos":"PRON"},{"text":"better","start":82.72,"end":82.96,"pos":"ADV"},{"text":"get","start":82.96,"end":83.12,"pos":"VERB"},{"text":"some","start":83.12,"end":83.32,"pos":"DET"},{"text":"sales.","start":83.32,"end":83.48,"pos":"NOUN"},{"text":"And","start":83.8,"end":83.88,"pos":"CCONJ"},{"text":"all","start":83.88,"end":83.98,"pos":"DET"},{"text":"the","start":83.98,"end":84.1,"pos":"DET"},{"text":"stadiums.","start":84.1,"end":84.4,"pos":"NOUN"},{"text":"If","start":84.9,"end":84.9,"pos":"SCONJ"},{"text":"it","start":84.9,"end":84.96,"pos":"PRON"},{"text":"means","start":84.96,"end":85.14,"pos":"VERB"},{"text":"avoid","start":85.14,"end":85.4,"pos":"VERB"},{"text":"a","start":85.4,"end":85.56,"pos":"DET"},{"text":"name,","start":85.56,"end":85.68,"pos":"NOUN"},{"text":"shame,","start":85.84,"end":85.96,"pos":"PUNCT"},{"text":"shame,","start":85.96,"end":86.06,"pos":"NOUN"},{"text":"shame.","start":86.06,"end":86.14,"pos":"NOUN"},{"text":"Oh,","start":86.3,"end":86.3,"pos":"PUNCT"},{"text":"well,","start":86.42,"end":86.58,"pos":"PUNCT"},{"text":"shit.","start":86.78,"end":86.94,"pos":"NOUN"},{"text":"It's","start":87.02,"end":87.1,"pos":"PRON"},{"text":"whatever.","start":87.1,"end":87.28,"pos":"PRON"},{"text":"I","start":87.56,"end":87.62,"pos":"PRON"},{"text":"was","start":87.62,"end":87.76,"pos":"AUX"},{"text":"real.","start":87.76,"end":87.94,"pos":"ADJ"},{"text":"You","start":88.1,"end":88.18,"pos":"PRON"},{"text":"just","start":88.18,"end":88.34,"pos":"ADV"},{"text":"soak","start":88.34,"end":88.5,"pos":"VERB"},{"text":"it","start":88.5,"end":88.66,"pos":"PRON"},{"text":"in.","start":88.66,"end":88.8,"pos":"ADP"},{"text":"You","start":92.15,"end":92.6,"pos":"PRON"},{"text":"just","start":92.6,"end":92.74,"pos":"ADV"},{"text":"soak","start":92.74,"end":92.94,"pos":"VERB"},{"text":"it","start":92.94,"end":93.1,"pos":"PRON"},{"text":"in.","start":93.1,"end":93.3,"pos":"ADP"},{"text":"You","start":96.54,"end":97.04,"pos":"PRON"},{"text":"just","start":97.04,"end":97.18,"pos":"ADV"},{"text":"soak","start":97.18,"end":97.36,"pos":"VERB"},{"text":"it","start":97.36,"end":97.56,"pos":"PRON"},{"text":"in.","start":97.56,"end":97.76,"pos":"ADP"},{"text":"You","start":101.2,"end":101.5,"pos":"PRON"},{"text":"just","start":101.5,"end":101.62,"pos":"ADV"},{"text":"soak","start":101.62,"end":101.8,"pos":"VERB"},{"text":"it","start":101.8,"end":101.84,"pos":"PRON"},{"text":"in.","start":101.84,"end":101.84,"pos":"ADP"},{"text":"You","start":101.84,"end":101.84,"pos":"PRON"},{"text":"just","start":101.84,"end":101.84,"pos":"ADV"},{"text":"soak","start":101.84,"end":101.84,"pos":"VERB"},{"text":"it","start":101.84,"end":102.0,"pos":"PRON"},{"text":"in.","start":102.0,"end":102.22,"pos":"ADP"},{"text":"I've","start":106.16,"end":106.46,"pos":"PRON"},{"text":"been","start":106.46,"end":106.54,"pos":"AUX"},{"text":"at","start":106.68,"end":106.78,"pos":"ADP"},{"text":"rock","start":106.78,"end":107.12,"pos":"NOUN"},{"text":"bottom","start":107.12,"end":107.57,"pos":"NOUN"},{"text":"with","start":107.6,"end":107.82,"pos":"ADP"},{"text":"no","start":107.82,"end":108.0,"pos":"DET"},{"text":"water,","start":108.0,"end":108.36,"pos":"NOUN"},{"text":"trying","start":108.58,"end":108.78,"pos":"VERB"},{"text":"to","start":108.78,"end":108.9,"pos":"PART"},{"text":"live","start":108.9,"end":109.08,"pos":"VERB"},{"text":"a","start":109.08,"end":109.16,"pos":"PRON"},{"text":"like","start":109.16,"end":109.34,"pos":"ADP"},{"text":"a","start":109.34,"end":109.48,"pos":"DET"},{"text":"piece,","start":109.48,"end":109.68,"pos":"NOUN"},{"text":"just","start":109.8,"end":109.92,"pos":"ADV"},{"text":"a","start":109.92,"end":110.04,"pos":"DET"},{"text":"grown.","start":110.04,"end":110.22,"pos":"NOUN"},{"text":"Matter","start":110.42,"end":110.6,"pos":"PROPN"},{"text":"got","start":110.6,"end":110.98,"pos":"VERB"},{"text":"the","start":110.98,"end":111.16,"pos":"DET"},{"text":"perfect","start":111.16,"end":111.62,"pos":"ADJ"},{"text":"pitch.","start":111.62,"end":111.9,"pos":"NOUN"},{"text":"There's","start":112.16,"end":112.28,"pos":"PRON"},{"text":"no","start":112.28,"end":112.42,"pos":"DET"},{"text":"Bad","start":112.56,"end":112.74,"pos":"ADJ"},{"text":"but","start":112.74,"end":113.02,"pos":"CCONJ"},{"text":"with","start":113.02,"end":113.22,"pos":"ADP"},{"text":"just","start":113.22,"end":113.38,"pos":"ADV"},{"text":"nobody","start":113.38,"end":113.74,"pos":"PRON"},{"text":"else.","start":113.74,"end":114.12,"pos":"ADV"},{"text":"There's","start":114.34,"end":114.38,"pos":"PRON"},{"text":"a","start":114.38,"end":114.46,"pos":"DET"},{"text":"new","start":114.46,"end":114.58,"pos":"ADJ"},{"text":"pack","start":114.58,"end":114.92,"pos":"NOUN"},{"text":"of","start":114.92,"end":115.18,"pos":"ADP"},{"text":"a","start":115.18,"end":115.28,"pos":"DET"},{"text":"mic.","start":115.28,"end":115.38,"pos":"NOUN"},{"text":"Yeah,","start":115.92,"end":116.02,"pos":"INTJ"},{"text":"so","start":116.44,"end":116.66,"pos":"ADV"},{"text":"won't","start":116.66,"end":116.98,"pos":"AUX"},{"text":"wrap","start":116.98,"end":117.16,"pos":"VERB"},{"text":"the","start":117.16,"end":117.42,"pos":"DET"},{"text":"mind","start":117.42,"end":117.72,"pos":"NOUN"},{"text":"Those","start":117.72,"end":118.08,"pos":"PRON"},{"text":"I","start":118.08,"end":118.2,"pos":"PRON"},{"text":"be","start":118.2,"end":118.32,"pos":"VERB"},{"text":"G.","start":118.32,"end":118.48,"pos":"PROPN"},{"text":"G","start":118.58,"end":118.66,"pos":"PROPN"},{"text":"waves","start":118.66,"end":118.86,"pos":"NOUN"},{"text":"don't","start":118.86,"end":119.18,"pos":"AUX"},{"text":"man","start":119.2,"end":119.34,"pos":"NOUN"},{"text":"get","start":119.34,"end":119.58,"pos":"VERB"},{"text":"in","start":119.58,"end":119.72,"pos":"ADP"},{"text":"line.","start":119.72,"end":119.9,"pos":"NOUN"},{"text":"Yeah,","start":120.36,"end":120.5,"pos":"INTJ"},{"text":"and","start":120.8,"end":120.9,"pos":"CCONJ"},{"text":"no","start":120.9,"end":121.02,"pos":"INTJ"},{"text":"the","start":121.02,"end":121.14,"pos":"DET"},{"text":"dope","start":121.14,"end":121.36,"pos":"NOUN"},{"text":"man","start":121.36,"end":121.6,"pos":"NOUN"},{"text":"get","start":121.6,"end":121.82,"pos":"VERB"},{"text":"a","start":121.82,"end":121.96,"pos":"DET"},{"text":"line","start":121.96,"end":122.2,"pos":"NOUN"},{"text":"When","start":122.2,"end":122.64,"pos":"SCONJ"},{"text":"I","start":122.64,"end":122.74,"pos":"PRON"},{"text":"scope","start":122.74,"end":122.92,"pos":"VERB"},{"text":"man,","start":122.92,"end":123.26,"pos":"NOUN"},{"text":"you","start":123.46,"end":123.74,"pos":"PRON"},{"text":"could","start":123.74,"end":123.86,"pos":"AUX"},{"text":"get","start":123.86,"end":124.06,"pos":"VERB"},{"text":"a","start":124.06,"end":124.18,"pos":"DET"},{"text":"mind","start":124.18,"end":124.36,"pos":"NOUN"},{"text":"don't","start":124.36,"end":124.62,"pos":"AUX"},{"text":"you","start":124.62,"end":124.72,"pos":"PRON"},{"text":"get","start":124.72,"end":124.92,"pos":"VERB"},{"text":"it?","start":124.92,"end":125.02,"pos":"PRON"},{"text":"I'm","start":125.16,"end":125.26,"pos":"PRON"},{"text":"supposed","start":125.26,"end":125.44,"pos":"VERB"},{"text":"to","start":125.44,"end":125.58,"pos":"PART"},{"text":"miss","start":125.58,"end":125.76,"pos":"VERB"},{"text":"the","start":125.76,"end":125.9,"pos":"DET"},{"text":"vice","start":125.94,"end":126.06,"pos":"NOUN"},{"text":"-presipized","start":126.06,"end":126.64,"pos":"ADJ"},{"text":"only","start":126.64,"end":126.88,"pos":"ADJ"},{"text":"mission","start":126.88,"end":127.2,"pos":"NOUN"},{"text":"I've","start":127.42,"end":127.54,"pos":"PRON"},{"text":"given","start":127.56,"end":127.68,"pos":"VERB"},{"text":"a","start":127.68,"end":127.8,"pos":"DET"},{"text":"shit","start":127.8,"end":127.88,"pos":"NOUN"},{"text":"to","start":127.88,"end":128.04,"pos":"PART"},{"text":"try","start":128.04,"end":128.26,"pos":"VERB"},{"text":"and","start":128.26,"end":128.46,"pos":"CCONJ"},{"text":"my","start":128.46,"end":128.6,"pos":"PRON"},{"text":"life","start":128.6,"end":128.76,"pos":"NOUN"},{"text":"if","start":128.76,"end":129.04,"pos":"SCONJ"},{"text":"I","start":129.04,"end":129.16,"pos":"PRON"},{"text":"didn't","start":129.16,"end":129.44,"pos":"AUX"},{"text":"have","start":129.44,"end":129.6,"pos":"VERB"},{"text":"the","start":129.6,"end":129.72,"pos":"DET"},{"text":"spit","start":129.72,"end":129.88,"pos":"NOUN"},{"text":"and","start":129.88,"end":130.02,"pos":"CCONJ"},{"text":"sit","start":130.02,"end":130.14,"pos":"VERB"},{"text":"out","start":130.14,"end":130.28,"pos":"ADP"},{"text":"in","start":130.28,"end":130.42,"pos":"ADP"},{"text":"my","start":130.42,"end":130.56,"pos":"PRON"},{"text":"freaking","start":130.62,"end":130.78,"pos":"VERB"},{"text":"life","start":130.78,"end":130.98,"pos":"NOUN"},{"text":"But","start":131.04,"end":131.14,"pos":"CCONJ"},{"text":"look","start":131.14,"end":131.36,"pos":"VERB"},{"text":"and","start":131.36,"end":131.46,"pos":"CCONJ"},{"text":"all","start":131.46,"end":131.54,"pos":"DET"},{"text":"these","start":131.54,"end":131.7,"pos":"DET"},{"text":"wrongs","start":131.7,"end":132.04,"pos":"NOUN"},{"text":"that","start":132.04,"end":132.1,"pos":"PRON"},{"text":"don't","start":132.1,"end":132.3,"pos":"AUX"},{"text":"wait","start":132.3,"end":132.4,"pos":"VERB"},{"text":"until","start":132.4,"end":132.66,"pos":"ADP"},{"text":"the","start":132.66,"end":132.8,"pos":"DET"},{"text":"end","start":132.8,"end":132.96,"pos":"NOUN"},{"text":"it's","start":132.96,"end":133.18,"pos":"PRON"},{"text":"a","start":133.18,"end":133.22,"pos":"DET"},{"text":"positive","start":133.22,"end":133.72,"pos":"ADJ"},{"text":"vibes","start":133.72,"end":134.08,"pos":"NOUN"},{"text":"only","start":134.08,"end":134.54,"pos":"ADV"},{"text":"don't","start":134.54,"end":134.9,"pos":"AUX"},{"text":"be","start":134.9,"end":135.0,"pos":"AUX"},{"text":"lost","start":135.0,"end":135.28,"pos":"VERB"},{"text":"for","start":135.28,"end":135.44,"pos":"ADP"},{"text":"them","start":135.44,"end":135.54,"pos":"PRON"},{"text":"blind","start":135.54,"end":135.78,"pos":"ADJ"},{"text":"It's","start":136.06,"end":136.18,"pos":"PRON"},{"text":"obviously","start":136.18,"end":136.48,"pos":"ADV"},{"text":"been","start":136.5,"end":136.68,"pos":"AUX"},{"text":"crossed","start":136.68,"end":136.9,"pos":"VERB"},{"text":"in","start":136.9,"end":137.12,"pos":"ADP"},{"text":"your","start":137.12,"end":137.2,"pos":"PRON"},{"text":"mind","start":137.2,"end":137.42,"pos":"NOUN"},{"text":"to","start":137.42,"end":137.62,"pos":"PART"},{"text":"find","start":137.62,"end":137.82,"pos":"VERB"},{"text":"water","start":137.82,"end":138.14,"pos":"NOUN"},{"text":"by","start":138.14,"end":138.32,"pos":"ADP"},{"text":"drop","start":138.32,"end":138.48,"pos":"NOUN"},{"text":"rows","start":138.48,"end":138.7,"pos":"NOUN"},{"text":"I","start":138.7,"end":138.88,"pos":"PRON"},{"text":"thought","start":138.88,"end":139.08,"pos":"VERB"},{"text":"you","start":139.08,"end":139.28,"pos":"PRON"},{"text":"were","start":139.28,"end":139.38,"pos":"AUX"},{"text":"blind","start":139.38,"end":139.66,"pos":"ADJ"},{"text":"but","start":139.66,"end":139.82,"pos":"CCONJ"},{"text":"drawn","start":139.82,"end":140.04,"pos":"VERB"},{"text":"not","start":140.04,"end":140.26,"pos":"PART"},{"text":"this","start":140.26,"end":140.44,"pos":"DET"},{"text":"horse's","start":140.44,"end":140.72,"pos":"NOUN"},{"text":"the","start":140.72,"end":140.78,"pos":"DET"},{"text":"strings","start":140.78,"end":141.0,"pos":"NOUN"},{"text":"is","start":141.0,"end":141.18,"pos":"AUX"},{"text":"pointless","start":141.18,"end":141.46,"pos":"ADJ"},{"text":"to","start":141.46,"end":141.68,"pos":"PART"},{"text":"try","start":141.68,"end":141.88,"pos":"VERB"},{"text":"sir","start":141.88,"end":142.06,"pos":"NOUN"},{"text":"Do","start":142.38,"end":142.48,"pos":"AUX"},{"text":"like","start":142.48,"end":142.74,"pos":"ADP"},{"text":"Royce","start":142.74,"end":143.12,"pos":"PROPN"},{"text":"and","start":143.14,"end":143.24,"pos":"CCONJ"},{"text":"this","start":143.24,"end":143.34,"pos":"DET"},{"text":"prime","start":143.34,"end":143.54,"pos":"ADJ"},{"text":"sir","start":143.54,"end":143.82,"pos":"NOUN"},{"text":"and","start":143.82,"end":144.18,"pos":"CCONJ"},{"text":"not","start":144.18,"end":144.32,"pos":"PART"},{"text":"like","start":144.32,"end":144.44,"pos":"INTJ"},{"text":"peak","start":144.44,"end":144.66,"pos":"NOUN"},{"text":"like","start":144.66,"end":144.88,"pos":"ADP"},{"text":"the","start":144.92,"end":145.02,"pos":"DET"},{"text":"hoodie","start":145.02,"end":145.24,"pos":"NOUN"},{"text":"from","start":145.24,"end":145.46,"pos":"ADP"},{"text":"the","start":145.46,"end":145.58,"pos":"DET"},{"text":"cipher","start":145.58,"end":145.92,"pos":"PROPN"},{"text":"in","start":146.24,"end":146.36,"pos":"ADP"},{"text":"war","start":146.36,"end":146.58,"pos":"NOUN"},{"text":"taking","start":146.58,"end":146.92,"pos":"VERB"},{"text":"other","start":146.92,"end":147.14,"pos":"ADJ"},{"text":"facts","start":147.14,"end":147.4,"pos":"NOUN"},{"text":"and","start":147.4,"end":147.58,"pos":"CCONJ"},{"text":"making","start":147.58,"end":147.72,"pos":"VERB"},{"text":"an","start":147.72,"end":147.86,"pos":"DET"},{"text":"imp","start":147.86,"end":148.0,"pos":"NOUN"},{"text":"for","start":148.0,"end":148.2,"pos":"SCONJ"},{"text":"it's","start":148.2,"end":148.44,"pos":"PRON"},{"text":"all","start":148.44,"end":148.54,"pos":"PRON"},{"text":"mean","start":148.54,"end":148.78,"pos":"VERB"},{"text":"been","start":148.78,"end":149.16,"pos":"AUX"},{"text":"ready","start":149.16,"end":149.36,"pos":"ADJ"},{"text":"to","start":149.36,"end":149.5,"pos":"PART"},{"text":"show","start":149.5,"end":149.6,"pos":"VERB"},{"text":"the","start":149.6,"end":149.72,"pos":"DET"},{"text":"whole","start":149.72,"end":149.92,"pos":"ADJ"},{"text":"world","start":149.92,"end":150.24,"pos":"NOUN"},{"text":"what","start":150.24,"end":150.46,"pos":"PRON"},{"text":"they're","start":150.46,"end":150.6,"pos":"PRON"},{"text":"in","start":150.6,"end":150.78,"pos":"ADP"},{"text":"for","start":150.78,"end":151.0,"pos":"ADP"},{"text":"no","start":151.0,"end":151.26,"pos":"PRON"},{"text":"more","start":151.26,"end":151.42,"pos":"ADV"},{"text":"doubt","start":151.42,"end":151.58,"pos":"ADJ"},{"text":"no","start":151.58,"end":151.88,"pos":"DET"},{"text":"hesitation","start":151.88,"end":152.24,"pos":"NOUN"},{"text":"no","start":152.24,"end":152.68,"pos":"PRON"},{"text":"more","start":152.68,"end":152.8,"pos":"ADJ"},{"text":"limitations","start":152.8,"end":153.14,"pos":"NOUN"},{"text":"down","start":153.14,"end":153.56,"pos":"ADV"},{"text":"and","start":153.56,"end":153.7,"pos":"CCONJ"},{"text":"so","start":153.7,"end":153.98,"pos":"ADV"},{"text":"we're","start":153.98,"end":154.26,"pos":"PRON"},{"text":"elevated","start":154.26,"end":154.66,"pos":"VERB"},{"text":"in","start":154.66,"end":154.92,"pos":"ADP"},{"text":"our","start":154.92,"end":155.02,"pos":"PRON"},{"text":"ministry","start":155.02,"end":155.38,"pos":"NOUN"},{"text":"There's","start":155.38,"end":155.62,"pos":"PRON"},{"text":"no","start":155.62,"end":155.72,"pos":"DET"},{"text":"more","start":155.72,"end":155.86,"pos":"ADV"},{"text":"downward","start":155.86,"end":156.06,"pos":"ADJ"},{"text":"thing","start":156.06,"end":156.26,"pos":"NOUN"},{"text":"can","start":156.26,"end":156.4,"pos":"AUX"},{"text":"feel","start":156.4,"end":156.56,"pos":"VERB"},{"text":"that","start":156.56,"end":156.66,"pos":"SCONJ"},{"text":"escalated","start":156.66,"end":157.14,"pos":"VERB"},{"text":"demonstrate","start":157.14,"end":157.52,"pos":"VERB"},{"text":"no","start":157.52,"end":157.76,"pos":"DET"},{"text":"boundaries","start":157.76,"end":158.02,"pos":"NOUN"},{"text":"now","start":158.02,"end":158.24,"pos":"ADV"},{"text":"so","start":158.24,"end":158.5,"pos":"ADV"},{"text":"I'm","start":158.5,"end":158.64,"pos":"PRON"},{"text":"celebrating","start":158.64,"end":159.0,"pos":"VERB"},{"text":"an","start":159.0,"end":159.28,"pos":"DET"},{"text":"average","start":159.28,"end":159.46,"pos":"ADJ"},{"text":"simulation","start":159.46,"end":159.82,"pos":"NOUN"},{"text":"you","start":159.82,"end":160.4,"pos":"PRON"},{"text":"just","start":160.4,"end":160.54,"pos":"ADV"},{"text":"so","start":160.54,"end":160.72,"pos":"ADV"},{"text":"could","start":160.72,"end":160.88,"pos":"AUX"},{"text":"you","start":160.88,"end":161.04,"pos":"PRON"},{"text":"you","start":161.04,"end":162.62,"pos":"PRON"},{"text":"just","start":162.62,"end":162.8,"pos":"ADV"},{"text":"so","start":162.8,"end":163.02,"pos":"ADV"},{"text":"could","start":163.02,"end":163.16,"pos":"AUX"},{"text":"then","start":163.16,"end":163.38,"pos":"ADV"},{"text":"you","start":172.12,"end":172.22,"pos":"PRON"}],"beats":[17.833,18.39,18.947,19.505,20.062,20.619,21.177,21.734,22.291,22.848,23.382,23.963,24.52,25.078,25.612,26.192,26.749,27.283,27.841,28.398,28.955,29.513,30.07,30.627,31.184,31.742,32.276,32.833,33.39,33.948,34.505,35.062,35.619,36.177,36.734,37.291,37.849,38.406,38.94,39.52,40.054,40.612,41.169,41.749,42.284,42.841,43.398,43.955,44.513,45.07,45.627,46.184,46.742,47.299,47.833,48.39,48.948,49.505,50.062,50.62,51.177,51.734,52.291,52.849,53.383,53.94,54.497,55.078,55.635,56.192,56.726,57.307,57.841,58.421,58.955,59.513,60.07,60.627,61.185,61.719,62.276,62.856,63.39,63.971,64.528,65.062,65.62,66.177,66.734,67.291,67.825,68.406,68.963,69.521,70.078,70.612,71.169,71.726,72.284,72.841,73.398,73.979,74.513,75.07,75.627,76.161,76.719,77.299,77.857,78.414,78.948,79.505,80.086,80.62,81.177,81.734,82.292,82.849,83.383,83.963,84.521,85.078,85.612,86.192,86.75,87.307,87.864,88.422,88.979,89.536,90.093,90.651,91.208,91.742,92.299,92.857,93.414,93.971,94.528,95.086,95.643,96.2,96.758,97.315,97.872,98.406,98.963,99.521,100.078,100.635,101.193,101.75,102.307,102.864,103.422,103.979,104.513,105.07,105.628,106.185,106.742,107.299,107.833,108.414,108.971,109.529,110.063,110.62,111.177,111.734,112.292,112.849,113.406,113.964,114.498,115.078,115.635,116.193,116.727,117.307,117.841,118.422,118.956,119.513,120.07,120.628,121.162,121.742,122.3,122.857,123.414,123.995,124.505,125.063,125.62,126.177,126.735,127.292,127.849,128.406,128.94,129.521,130.055,130.612,131.17,131.727,132.284,132.841,133.399,133.956,134.513,135.07,135.628,136.185,136.719,137.3,137.834,138.391,138.948,139.505,140.063,140.643,141.201,141.735,142.292,142.849,143.383,143.964,144.521,145.078,145.612,146.17,146.727,147.284,147.841,148.399,148.956,149.513,150.071,150.628,151.185,151.742,152.276,152.857,153.414,153.972,154.506,155.063,155.62,156.177,156.735,157.292,157.849,158.407,158.941,159.521,160.078,160.636,161.17,161.727,162.284,162.842,163.399,163.956,164.513,165.071,165.628,166.185,166.742,167.3,167.834,168.414,168.972,169.529,170.063,170.62,171.178,171.735,172.292,172.849,173.407,173.964,174.498,175.078,175.636,176.193,176.727,177.284,177.865,178.422,178.979,179.537,180.094,180.651,181.209,181.766,182.323,182.88,183.438,183.995,184.552,185.086,185.644,186.201,186.735,187.292,187.849,188.407,188.964,189.521,190.079,190.636,191.193,191.75,192.308,192.865,193.399]}/*__END__*/;  // bundled sample only (optional)
+
+(function(){
+'use strict';
+try{
+/* song data is loaded at runtime — NOT bound to any single track */
+let WORDS=[], BEATS=[], LINES=[], WORD2LINE=new Int32Array(0), DURATION=8, TRACK_NAME='';
+let ARRANGEMENT=[], autoArrange=false;            // intent-driven construct switching
+let METAS=[];                                     // per-line word-art cues from the AI art-direction stage
+let SCENES=[];                                    // per-line cinematic cues (rotate word / symbol / cage+figure)
+let RHYME_PAL=[];                                  // rhyme-family palette (from rhyme_engine.py / fallback)
+let CONCEPT=null;                                  // per-song visual world (palette/fonts/motifs) from the Director CONCEPT stage
+const AUTOLOAD_NAME=/*__AUTOLOAD_NAME__*/ "" /*__END_AL__*/;  // set per-build to auto-load an inlined track
+const AUTOLOAD_AUDIO=/*__AUTOLOAD_AUDIO__*/ "" /*__END_AUD__*/; // optional per-build audio (relative URL or data: URI)
+const AUTOLOAD_SEEK=/*__AUTOLOAD_SEEK__*/ 0 /*__END_SEEK__*/;   // where autoplay starts (seconds)
+
+/* ---------- URL params (deep-link / verification) ---------- */
+const Q=new URLSearchParams(location.search);
+const Q_CONSTRUCT=Q.get('construct'); const Q_T=parseFloat(Q.get('t'));
+const Q_AUTOPLAY=Q.get('play')==='1'||Q.get('autoplay')==='1'; const Q_DEMO=Q.get('demo')==='1';
+
+/* ---------- DOM refs ---------- */
+const stage=document.getElementById('stage'), canvas=document.getElementById('three-canvas'),
+  domLayer=document.getElementById('dom-layer'), embodyLayer=document.getElementById('embody-layer'), intro=document.getElementById('intro'),
+  playBtn=document.getElementById('playBtn'), ppBtn=document.getElementById('ppBtn'),
+  scrub=document.getElementById('scrub'), timeEl=document.getElementById('time'),
+  constructSel=document.getElementById('constructSel'), constructDesc=document.getElementById('constructDesc'),
+  fsBtn=document.getElementById('fsBtn'), trackNameEl=document.getElementById('trackName'),
+  dropZone=document.getElementById('drop'), audioInput=document.getElementById('audioInput'),
+  audioInput2=document.getElementById('audioInput2'), audioBtn=document.getElementById('audioBtn'),
+  jsonInput=document.getElementById('jsonInput'), jsonBtn=document.getElementById('jsonBtn'),
+  demoLink=document.getElementById('demoLink'),
+  ingestStatus=document.getElementById('ingestStatus'),
+  editor=document.getElementById('editor'), edList=document.getElementById('edList'),
+  editBtn=document.getElementById('editBtn'), edClose=document.getElementById('edClose'),
+  edApply=document.getElementById('edApply'), edDownload=document.getElementById('edDownload'),
+  edAdd=document.getElementById('edAdd');
+
+window.rawLyricsText = null;
+
+function alignLyrics(transcribedWords, rawText) {
+  // Simple Levenshtein alignment between transcribed words and raw text words
+  const rawLines = rawText.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  const rawWords = [];
+  rawLines.forEach(line => {
+    const toks = line.split(/\s+/).filter(Boolean);
+    toks.forEach((tok, idx) => {
+      rawWords.push({
+        text: tok,
+        isLineBreak: idx === toks.length - 1
+      });
+    });
+  });
+
+  if (!rawWords.length || !transcribedWords.length) return transcribedWords;
+
+  function cleanAlign(t) { return (t || '').toLowerCase().replace(/[^a-z0-9]/g, ''); }
+
+  const n = transcribedWords.length;
+  const m = rawWords.length;
+  const dp = Array.from({length: n + 1}, () => new Int32Array(m + 1));
+
+  for (let i = 0; i <= n; i++) dp[i][0] = i * 2;
+  for (let j = 0; j <= m; j++) dp[0][j] = j * 2;
+
+  for (let i = 1; i <= n; i++) {
+    const tw = cleanAlign(transcribedWords[i - 1].text);
+    for (let j = 1; j <= m; j++) {
+      const rw = cleanAlign(rawWords[j - 1].text);
+      let cost = 2; // substitution
+      if (tw === rw) cost = 0;
+      else if (tw.includes(rw) || rw.includes(tw)) cost = 1;
+
+      dp[i][j] = Math.min(
+        dp[i - 1][j - 1] + cost,
+        dp[i - 1][j] + 2, // deletion
+        dp[i][j - 1] + 2  // insertion
+      );
+    }
+  }
+
+  // Backtrack
+  let i = n, j = m;
+  const alignment = []; // mapping from transcribed idx to raw word
+  while (i > 0 && j > 0) {
+    const cost = dp[i][j];
+    const tw = cleanAlign(transcribedWords[i - 1].text);
+    const rw = cleanAlign(rawWords[j - 1].text);
+
+    let matchCost = 2;
+    if (tw === rw) matchCost = 0;
+    else if (tw.includes(rw) || rw.includes(tw)) matchCost = 1;
+
+    if (cost === dp[i - 1][j - 1] + matchCost) {
+      alignment[i - 1] = rawWords[j - 1];
+      i--; j--;
+    } else if (cost === dp[i - 1][j] + 2) {
+      alignment[i - 1] = null;
+      i--;
+    } else {
+      j--;
+    }
+  }
+
+  // Apply ground truth text and line breaks to transcribed words
+  const alignedWords = transcribedWords.map((tw, idx) => {
+    const aw = { ...tw };
+    aw.manual_line = true; // Flag for buildLines
+    const rw = alignment[idx];
+    if (rw) {
+      aw.text = rw.text;
+      aw.line_break = rw.isLineBreak;
+    } else {
+      aw.line_break = false; // Orphan words don't get line breaks
+    }
+    return aw;
+  });
+
+  // Ensure last word has a line break if it's the end of the song
+  if (alignedWords.length) alignedWords[alignedWords.length - 1].line_break = true;
+
+  return alignedWords;
+}
+
+/* ============================================================================
+   PART 1 — LINGUISTIC INTELLIGENCE  (general; works on any lyrics)
+   ========================================================================== */
+const FUNCTION_POS=new Set(['DET','ADP','PRON','AUX','CCONJ','SCONJ','PART','PUNCT']);
+function clean(t){return (t||'').toLowerCase().replace(/[^a-z']/g,'');}
+function posWeight(pos){switch(pos){case 'PROPN':return 1.18;case 'NOUN':return 1.0;case 'VERB':return .92;
+  case 'ADJ':return .82;case 'NUM':case 'INTJ':return .74;case 'ADV':return .66;default:return FUNCTION_POS.has(pos)?.40:.6;}}
+
+/* Rhyme analysis: spelling -> coarse phoneme, vowel-sound (assonance) grouping.
+   Tuned for rap multisyllabic rhyme; handles silent-e, vowel digraphs, silent "gh". */
+function syllableCount(w){const m=(w||'').replace(/e$/,'').match(/[aeiouy]+/g);return m?m.length:1;}
+function phon(word){
+  let w=clean(word).replace(/'/g,''); if(!w) return '';
+  w=w.replace(/igh/g,'I').replace(/eigh/g,'A').replace(/ough|augh/g,'O')
+     .replace(/ck/g,'k').replace(/ph/g,'f').replace(/qu/g,'kw')
+     .replace(/^kn/,'n').replace(/^wr/,'r').replace(/wh/g,'w').replace(/dge/g,'j').replace(/tch/g,'ch');
+  w=w.replace(/a[iy]/g,'A').replace(/ey/g,'A').replace(/e[ie]/g,'E').replace(/ea/g,'E').replace(/ee/g,'E')
+     .replace(/oa/g,'O').replace(/oe/g,'O').replace(/ow/g,'O').replace(/oo/g,'U').replace(/ew/g,'U').replace(/ue/g,'U')
+     .replace(/ou/g,'W').replace(/o[iy]/g,'Y');
+  if(/y$/.test(w)){ const other=/[aeiouAEIOUWY]/.test(w.slice(0,-1)); w=w.slice(0,-1)+(other?'E':'I'); }
+  if(/[^aeiouAEIOUWY](le|re)$/.test(w)){ /* syllabic l/r */ }
+  else if(/[aeiou][^aeiouAEIOUWY]e$/.test(w)){
+     w=w.replace(/([aeiou])([^aeiouAEIOUWY])e$/,(m,v,c)=>({a:'A',e:'E',i:'I',o:'O',u:'U'}[v]||v)+c);
+  } else if(/[^aeiouAEIOUWY]e$/.test(w) && w.length>2){ w=w.slice(0,-1); }
+  return w;
+}
+function rhymeKey(text){
+  const w=phon(text); if(!w) return null;
+  const m=w.match(/([AEIOUWYaeiou])[^AEIOUWYaeiou]*$/);
+  if(!m) return null;
+  const nuc=m[1];
+  return {A:'AY',E:'EE',I:'LONG_I',O:'OH',U:'OO',W:'OW',Y:'OY',a:'AH',e:'EH',i:'IH',o:'AW',u:'UH'}[nuc]||('V_'+nuc.toUpperCase());
+}
+
+/* Light POS guesser for transcribed lyrics that arrive without tags */
+const FN_WORDS=new Set(('a an the of to in on at for and or but nor so yet as if then than that this these those i you he she it we they me him her us them my your his its our their is am are was were be been being do does did have has had will would can could should may might must not no yes up down out off over under into onto from with by about').split(' '));
+function quickPOS(text){const w=clean(text).replace(/'.*$/,''); if(!w)return 'X'; if(FN_WORDS.has(w))return 'DET'; if(/(ing|ed)$/.test(w))return 'VERB'; if(/(ly)$/.test(w))return 'ADV'; return 'NOUN';}
+
+/* Line segmentation from timing gaps + sentence punctuation */
+function buildLines(words){
+  const lines=[]; let cur=[]; const GAP=0.62, MAXW=9;
+
+  // Check if we have manual line markers
+  const hasManualLines = words.some(w => w.manual_line);
+
+  for(let i=0;i<words.length;i++){
+    cur.push(i); const next=words[i+1];
+
+    if (hasManualLines) {
+      if (!next || words[i].line_break) {
+        lines.push({idx:cur.slice(),start:words[cur[0]].start,end:words[cur[cur.length-1]].end}); cur=[];
+      }
+    } else {
+      const gap=next?(next.start-words[i].end):999;
+      const endsSentence=/[.!?…]$/.test(words[i].text);
+      if(!next||gap>GAP||cur.length>=MAXW||(endsSentence&&cur.length>=3)){
+        lines.push({idx:cur.slice(),start:words[cur[0]].start,end:words[cur[cur.length-1]].end}); cur=[];
+      }
+    }
+  }
+  return lines;
+}
+
+/* Per-window rhyme color families (assonance) — warm/cool hues only, deliberately no lavender tones */
+const RHYME_PALETTE=["#FF5D5D","#FF8A3D","#FFB73D","#F1E14C","#A3D955","#46C68A","#2FB8C6","#48A6FF","#FF7F5C","#D8D3C7"];
+function computeWindowRhymes(centerLine, windowLines){
+  const lo=Math.max(0,centerLine-Math.floor(windowLines/2));
+  const hi=Math.min(LINES.length-1, lo+windowLines-1);
+  const keyToWords={};
+  for(let li=lo;li<=hi;li++){ for(const wi of LINES[li].idx){
+    const w=WORDS[wi]; if(FUNCTION_POS.has(w.pos)) continue;
+    const k=rhymeKey(w.text); if(!k) continue;
+    (keyToWords[k]=keyToWords[k]||[]).push(wi);
+  }}
+  const wordColor={}; let ci=0;
+  Object.keys(keyToWords).filter(k=>keyToWords[k].length>=2)
+    .sort((a,b)=>Math.min(...keyToWords[a])-Math.min(...keyToWords[b]))
+    .forEach(k=>{const c=RHYME_PALETTE[ci++%RHYME_PALETTE.length];keyToWords[k].forEach(wi=>wordColor[wi]=c);});
+  return {lo,hi,wordColor};
+}
+
+/* Fallback rhyme grouping when the pipeline (rhyme_engine.py / CMUdict) didn't supply groups:
+   group every content word by its phonetic assonance key across the whole song (internal rhymes too). */
+function ensureRhymeGroups(){
+  if(WORDS.some(w=>w.rhyme>=0) && RHYME_PAL.length) return;
+  const FAM=["#19E0E0","#A6E22E","#FF3D7F","#FF1E1E","#9D6B4A","#9AA0A6","#FF9F1C","#2D9CFF","#FF66C4","#B388FF","#7CFF6B","#E6C229","#FF5C2A","#5CE1E6"];
+  const byKey={};
+  WORDS.forEach((w,i)=>{ w.rhyme=-1; if(FUNCTION_POS.has(w.pos))return; const k=rhymeKey(w.text); if(!k)return; (byKey[k]=byKey[k]||[]).push(i); });
+  const fams=Object.keys(byKey).filter(k=>byKey[k].length>=2).sort((a,b)=>Math.min(...byKey[a])-Math.min(...byKey[b]));
+  RHYME_PAL=[]; fams.forEach((k,fi)=>{ byKey[k].forEach(i=>WORDS[i].rhyme=fi); RHYME_PAL.push(FAM[fi%FAM.length]); });
+}
+
+/* Semantic-Visual Action Library: lyric intention -> motion archetype */
+const FORM_MAP=[
+  {re:/^(cage|caged|trap|trapped|prison|locked|bars?)$/,form:'cage'},
+  {re:/^(free|freedom|fly|flew|escape|wings?|release|loose)$/,form:'liberate'},
+  {re:/^(rise|rising|rose|up|elevate|elevating|escalate|higher|height|heights|above|climb)$/,form:'ascend'},
+  {re:/^(fall|falling|fell|down|drop|dropped|bottom|sink|sank|crash)$/,form:'fall'},
+  {re:/^(rock|stone|wall|hard|stand|stood|stuck|frozen)$/,form:'settle'},
+  {re:/^(light|lights|fire|burn|burns|flame|spark|glow|shine|bright|blaze|choke|smoke)$/,form:'ignite'},
+  {re:/^(water|stream|streams|flow|flows|flowing|wave|waves|river|ocean|rain|drip)$/,form:'water'},
+  {re:/^(peace|calm|still|quiet|breathe|rest|sober|mind|soul)$/,form:'breathe'},
+  {re:/^(spit|spits|bars?|mic|write|wrote|flow|rhyme|rhymes|words?|page|notepad|bar)$/,form:'staccato'},
+  {re:/^(time|forever|end|eternal|always|life)$/,form:'drift'}
+];
+function semanticForm(word){const w=clean(word.text);for(const f of FORM_MAP){if(f.re.test(w))return f.form;}return word.pos==='VERB'?'verbmotion':null;}
+
+/* ============================================================================
+   PART 2 — DATA LOADING (song-agnostic)
+   ========================================================================== */
+function loadData(data, name){
+  WORDS=(data&&data.words||[]).filter(w=>w&&w.text&&/\S/.test(w.text)).map(w=>{
+    const wordObj = {text:String(w.text),start:+w.start||0,end:+w.end|| (+w.start||0)+0.3, pos:w.pos||'X', rhyme:(w.rhyme==null?-1:w.rhyme), dir:(w.dir||null)};
+    if (w.customX !== undefined && w.customY !== undefined) {
+      wordObj.customX = w.customX;
+      wordObj.customY = w.customY;
+    }
+    return wordObj;
+  });
+  RHYME_PAL=(data&&data.rhyme_palette||[]).slice();
+  CONCEPT=(data&&data.concept)||null; applyConcept();
+  BEATS=(data&&data.beats||[]).map(Number).filter(n=>!isNaN(n));
+  DURATION=WORDS.length?Math.max(WORDS[WORDS.length-1].end+2.5,4):8;
+  LINES=buildLines(WORDS);
+  WORD2LINE=new Int32Array(WORDS.length);
+  LINES.forEach((ln,li)=>ln.idx.forEach(wi=>WORD2LINE[wi]=li));
+  ensureRhymeGroups();
+  TRACK_NAME=name||''; if(trackNameEl) trackNameEl.textContent=TRACK_NAME;
+  ARRANGEMENT=(data&&data.arrangement||[]).slice().sort((a,b)=>(a.start||0)-(b.start||0)); autoArrange=ARRANGEMENT.length>0;
+  METAS=(data&&data.metaphors||[]).slice().sort((a,b)=>(a.start||0)-(b.start||0));
+  SCENES=(data&&data.scenes||[]).slice().sort((a,b)=>(a.start||0)-(b.start||0));
+  if(!GL.ok){ var _g={kinetic_art:1,chameleon:1,classic:1}; ARRANGEMENT=ARRANGEMENT.map(function(a){return _g[a.construct]?Object.assign({},a,{construct:'embodiment'}):a;}); }
+  if(GL.ok){ GL.active.forEach(w=>w.dispose()); GL.active.clear(); }
+  DOM.built=false; domLayer.innerHTML=''; DOM.shownLo=-1; DOM.shownHi=-1;
+  embClear();
+  if(cur&&cur.layer==='dom') buildDOMOnce();
+  Clock.seek(0); lastNow=0; GL.lastBeat=-1;
+  return WORDS.length;
+}
+
+/* ============================================================================
+   PART 3 — MASTER CLOCK & TRANSPORT (audio-optional)
+   ========================================================================== */
+const Clock={
+  audio:null, playing:false, virtT:0, lastPerf:0,
+  get time(){ return this.audio ? this.audio.currentTime : this.virtT; },
+  get duration(){ return (this.audio && this.audio.duration && isFinite(this.audio.duration)) ? this.audio.duration : DURATION; },
+  play(){ if(this.playing||!WORDS.length) return; this.playing=true; this.lastPerf=performance.now(); if(this.audio){this.audio.play().catch(()=>{});} ppBtn.textContent='❚❚'; },
+  pause(){ this.playing=false; if(this.audio) this.audio.pause(); ppBtn.textContent='▶'; },
+  toggle(){ this.playing?this.pause():this.play(); },
+  seek(t){ t=Math.max(0,Math.min(this.duration,t)); if(this.audio) this.audio.currentTime=t; else this.virtT=t; },
+  tick(){ if(this.playing && !this.audio){ const now=performance.now(); this.virtT+=(now-this.lastPerf)/1000; this.lastPerf=now; if(this.virtT>=this.duration){this.virtT=this.duration;this.pause();} } }
+};
+function fmt(s){s=Math.max(0,s|0);return (s/60|0)+':'+String(s%60).padStart(2,'0');}
+
+/* ============================================================================
+   PART 4 — WEBGL LAYER  (kinetic + semantic word-forms)
+   ========================================================================== */
+const GL={ ok:false, scene:null, camera:null, renderer:null, font:null, group:null, active:new Map(), beatPulse:0, lastBeat:-1, usedSlots:new Set() };
+/* anti-overlap: concurrent words get distinct vertical slots (0 = centered, others stack symmetrically) */
+function gpAcquireSlot(){ for(var i=0;i<16;i++){ if(!GL.usedSlots.has(i)){ GL.usedSlots.add(i); return i; } } return 0; }
+function gpReleaseSlot(s){ GL.usedSlots.delete(s); }
+function slotY(slot,gap){ if(!slot) return 0; var k=Math.ceil(slot/2); return (slot%2?1:-1)*k*gap; }
+function initGL(font){
+  GL.font=font;
+  try{ GL.renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true}); }catch(e){ return false; }
+  GL.renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+  GL.renderer.setSize(window.innerWidth,window.innerHeight);
+  GL.scene=new THREE.Scene(); GL.scene.fog=new THREE.Fog(0x161616,120,520);
+  GL.camera=new THREE.PerspectiveCamera(60,window.innerWidth/window.innerHeight,0.1,2000); GL.camera.position.set(0,0,260);
+  GL.scene.add(new THREE.AmbientLight(0xffffff,0.55));
+  const key=new THREE.PointLight(0xffe9e0,1.7,1400); key.position.set(0,120,260); GL.scene.add(key);
+  const rim=new THREE.PointLight(0xcfd6ff,0.9,1400); rim.position.set(-220,-60,160); GL.scene.add(rim);
+  GL.group=new THREE.Group(); GL.scene.add(GL.group); GL.ok=true; return true;
+}
+function easeOutBack(x){const c1=1.70158,c3=c1+1;return 1+c3*Math.pow(x-1,3)+c1*Math.pow(x-1,2);}
+function easeOutBounce(x){const n1=7.5625,d1=2.75;if(x<1/d1)return n1*x*x;if(x<2/d1)return n1*(x-=1.5/d1)*x+.75;if(x<2.5/d1)return n1*(x-=2.25/d1)*x+.9375;return n1*(x-=2.625/d1)*x+.984375;}
+class GLWord{
+  constructor(wi,theme){
+    this.wi=wi; this.data=WORDS[wi]; this.theme=theme; this.group=new THREE.Group(); this.letters=[]; this.basePos=[];
+    const text=this.data.text.replace(/[^\S]/g,''); const display=theme.upper?text.toUpperCase():text;
+    const size=theme.baseSize*posWeight(this.data.pos); this.size=size; let x=0;
+    for(const ch of display){
+      if(ch===' '){x+=size*0.4;continue;}
+      let geo; try{ geo=new THREE.TextGeometry(ch,{font:GL.font,size:size,height:Math.max(2,size*0.16),curveSegments:6,bevelEnabled:true,bevelThickness:size*0.03,bevelSize:size*0.02,bevelSegments:2}); }catch(e){ continue; }
+      geo.computeBoundingBox(); const w=(geo.boundingBox.max.x-geo.boundingBox.min.x)||size*0.5; const col=this.colorFor();
+      const mat=new THREE.MeshStandardMaterial({color:col,emissive:col,emissiveIntensity:0,roughness:theme.roughness,metalness:theme.metalness,transparent:true,opacity:0});
+      const mesh=new THREE.Mesh(geo,mat); mesh.position.x=x; this.group.add(mesh); this.letters.push(mesh); x+=w+size*0.12;
+    }
+    const box=new THREE.Box3().setFromObject(this.group); const c=new THREE.Vector3(); box.getCenter(c);
+    this.letters.forEach(l=>{l.position.x-=c.x;l.position.y-=c.y;}); this.letters.forEach(l=>this.basePos.push(l.position.clone()));
+    this.form=semanticForm(this.data); this.seed=Math.random()*10; this.slot=gpAcquireSlot(); GL.group.add(this.group);
+  }
+  colorFor(){const t=this.theme,p=this.data.pos;
+    if(t.palette){ if(p==='NOUN'||p==='PROPN')return new THREE.Color(t.palette.noun); if(p==='VERB')return new THREE.Color(t.palette.verb); if(p==='ADJ')return new THREE.Color(t.palette.adj); if(FUNCTION_POS.has(p))return new THREE.Color(t.palette.fn); return new THREE.Color(t.palette.base);} return new THREE.Color(t.color||0xffffff);}
+  update(now,dt){
+    const d=this.data,lead=0.45,tail=0.55; const phase=(now-d.start)/Math.max(0.08,(d.end-d.start)); let vis,scale,emis;
+    if(now<d.start){ const g=Math.max(0,1-(d.start-now)/lead); vis=0.16*g; scale=0.82+0.06*g; emis=0; }
+    else if(now<=d.end){ const snap=Math.min(1,(now-d.start)/0.12); vis=1; scale=0.82+0.34*easeOutBack(snap); emis=0.55*snap+0.25*GL.beatPulse; }
+    else { const e=(now-d.end)/tail; vis=Math.max(0,1-e); scale=1.16-0.12*e; emis=0.2*(1-e); }
+    this.group.scale.setScalar(scale*(this.theme.scaleMul||1));
+    const t=now*1.0;
+    var gap=(this.theme.baseSize||22)*2.1; this.group.position.y=this.theme.posY+slotY(this.slot,gap)+Math.sin(t*0.8+this.seed)*3+GL.beatPulse*6;
+    this.group.position.x=(this.theme.jitter?Math.sin(t*0.5+this.seed)*8:0);
+    this.group.position.z=GL.beatPulse*14;
+    if(this.theme.rotate) this.group.rotation.y+=dt*0.25;
+    for(const l of this.letters){l.material.opacity=vis;l.material.emissiveIntensity=emis;}
+    if(this.form&&now>=d.start-0.1) this.applyForm(this.form,Math.min(1,Math.max(0,phase)),now); else this.applyDefault(now);
+  }
+  applyDefault(now){this.letters.forEach((l,i)=>{const b=this.basePos[i];l.position.y=b.y+Math.sin(now*4+i*0.6)*this.size*0.05;l.rotation.z=0;});}
+  applyForm(form,p,now){
+    const S=this.size,L=this.letters,n=L.length,lerp=THREE.MathUtils.lerp;
+    switch(form){
+      case 'cage':{const R=S*1.9;L.forEach((l,i)=>{const b=this.basePos[i];const ang=(i/n)*Math.PI*2;l.position.x=lerp(b.x,Math.cos(ang)*R,p);l.position.y=lerp(b.y,Math.sin(ang)*R*0.7,p);l.rotation.z=lerp(0,(i%2?1:-1)*Math.PI/2,p);});break;}
+      case 'liberate': case 'ascend':{L.forEach((l,i)=>{const b=this.basePos[i];l.position.y=b.y+p*S*(1+(i-n/2)*0.05)+Math.sin(now*3+i)*S*0.06*p;l.position.x=b.x+(i-n/2)*p*S*0.18;l.rotation.z=lerp(0,(i-n/2)*0.12,p);});break;}
+      case 'fall': case 'settle':{L.forEach((l,i)=>{const b=this.basePos[i];const delay=i*0.05;const pp=Math.max(0,Math.min(1,(p-delay)/(1-delay||1)));l.position.y=b.y-S*1.4*(1-easeOutBounce(pp));});break;}
+      case 'ignite':{L.forEach((l,i)=>{const b=this.basePos[i];const f=0.6+0.4*Math.sin(now*22+i*1.7);l.material.emissiveIntensity=Math.max(l.material.emissiveIntensity,0.5+0.6*f);l.position.y=b.y+Math.abs(Math.sin(now*6+i))*S*0.08;});break;}
+      case 'water':{L.forEach((l,i)=>{const b=this.basePos[i];l.position.y=b.y+Math.sin(now*4+i*0.9)*S*0.22;l.rotation.z=Math.sin(now*3+i*0.7)*0.12;});break;}
+      case 'breathe':{this.group.scale.multiplyScalar(1+Math.sin(now*1.6)*0.06);break;}
+      case 'staccato':{L.forEach((l,i)=>{const b=this.basePos[i];const k=Math.max(0,1-Math.abs((p*n)-i));l.position.z=k*S*0.8;l.position.y=b.y;});break;}
+      case 'verbmotion':{L.forEach((l,i)=>{const b=this.basePos[i];l.position.x=b.x+Math.sin(now*5+i*0.4)*S*0.1;});break;}
+      default:this.applyDefault(now);
+    }
+  }
+  dispose(){gpReleaseSlot(this.slot);GL.group.remove(this.group);this.letters.forEach(l=>{l.geometry.dispose();l.material.dispose();});}
+}
+const GL_THEMES={
+  kinetic_art:{bg:'#2E0709',fog:0x220607,baseSize:26,posY:0,upper:true,rotate:false,jitter:false,roughness:0.35,metalness:0.2,scaleMul:1.0,
+    palette:{noun:'#ffffff',propn:'#ffffff',verb:'#FF5A5F',adj:'#FF9AA0',fn:'#7E3A40',base:'#F5E6E8'}},
+  chameleon:{bg:'#060606',fog:0x070707,baseSize:24,posY:0,upper:true,rotate:false,jitter:true,roughness:0.2,metalness:0.7,
+    palette:{noun:'#FF4D4D',propn:'#48A6FF',verb:'#00E5C0',adj:'#FFE14C',fn:'#5a5a55',base:'#ffffff'}},
+  classic:{bg:'#0a0a0a',fog:0x0a0a0a,baseSize:22,posY:0,upper:false,rotate:true,jitter:false,roughness:0.1,metalness:1.0,color:0xd0d0d0}
+};
+let curTheme=GL_THEMES.kinetic_art;
+
+/* ============================================================================
+   PART 4b — EMBODIMENT (DOM): line reconstruction + words-as-imagery metaphors
+   Each line's words fly in and assemble into a shape that embodies its meaning,
+   while the sung word flares. Renders without WebGL (works in sandboxed embeds).
+   ========================================================================== */
+const EMB={ lineIdx:-1, spans:[], metaphor:'row' };
+/* icon vocabulary for the Director's iconography substitution (concept word -> glyph) */
+const ICONS={coffin:'⚰️',candle:'🕯️',hands:'🙏',cage:'🧱',crown:'👑',fire:'🔥',water:'💧',ladder:'🪜',peace:'☮',eyes:'👁',gun:'🔫',money:'💸',skull:'💀',heart:'🤍',star:'★',clock:'⏳'};
+function iconGlyph(n){ return (CONCEPT&&CONCEPT.motifs&&CONCEPT.motifs[n])||ICONS[n]||null; }
+/* paint the song's concept palette into CSS vars so each track renders in its own world (not a default) */
+function applyConcept(){
+  const r=document.documentElement.style, p=(CONCEPT&&CONCEPT.palette)||null;
+  r.setProperty('--ink', (p&&p.ink)||'#EDEAE4');
+  r.setProperty('--accent', (p&&p.accents&&p.accents[0])||'#ff9ec4');
+  r.setProperty('--embbg', (p&&p.bg)||'#0b0c10');
+}
+function lineMetaphor(text){
+  const t=(text||'').toLowerCase();
+  if(/\b(cage|cages|caged|trap|trapped|locked|prison|bars?|boxed?|chain\w*)\b/.test(t)) return 'cage';
+  if(/\b(rise|rising|rose|elevat\w*|escalat\w*|higher|above|climb\w*|soar\w*|ascend\w*|up|heights?)\b/.test(t)) return 'ascend';
+  if(/\b(fall\w*|fell|drop\w*|bottom|sink|sank|sunk|down\w*|crash\w*|low\w*|under)\b/.test(t)) return 'fall';
+  if(/\b(spiral\w*|circle\w*|around|cycle\w*|spin\w*|loop\w*|round|orbit\w*)\b/.test(t)) return 'spiral';
+  if(/\b(path|road|journey|route|street|lane|walk\w*|run\w*|miles?)\b/.test(t)) return 'path';
+  if(/\b(split|divide\w*|break\w*|apart|versus|against|war|fight\w*|two|sides?)\b/.test(t)) return 'split';
+  if(/\b(build\w*|built|stack\w*|pile\w*|tower\w*|ladder|steps?|level\w*)\b/.test(t)) return 'stack';
+  return 'row';
+}
+/* Prefer the AI art-direction cue for this line (matched by start time); else keyword detection. */
+function metaForLine(li){
+  const ls=LINES[li].start;
+  if(METAS.length){ let best=null, bd=1e9;
+    for(const m of METAS){ const d=Math.abs((m.start||0)-ls); if(d<bd){bd=d;best=m;} }
+    if(best && bd<1.0 && best.metaphor && best.metaphor!=='row') return best.metaphor;
+  }
+  return lineMetaphor(LINES[li].text || LINES[li].idx.map(wi=>WORDS[wi].text).join(' '));
+}
+function sceneForLine(li){ if(!SCENES.length) return null; const ls=LINES[li].start; let best=null,bd=1e9;
+  for(const s of SCENES){ const d=Math.abs((s.start||0)-ls); if(d<bd){bd=d;best=s;} } return (best&&bd<1.0)?best:null; }
+function embClear(){ if(embodyLayer){ embodyLayer.innerHTML=''; } EMB.spans=[]; EMB.lineIdx=-1; EMB.sym=null; EMB.fig=null; EMB.scene=null; }
+
+// Simple pseudo-random generator
+function pseudoRandom(seed) {
+  let x = Math.sin(seed++) * 10000;
+  return x - Math.floor(x);
+}
+
+function embLayoutPx(spans, metaphor, lineIdx = 0){
+  const n=spans.length, vw=window.innerWidth, vh=window.innerHeight;
+
+  // Custom plot layout override: if all words in this line have custom positions, use them
+  let useCustom = true;
+  for (let i = 0; i < n; i++) {
+    const word = WORDS[spans[i].wi];
+    if (word.customX === undefined || word.customY === undefined) {
+      useCustom = false;
+      break;
+    }
+  }
+
+  if (useCustom) {
+    const pos = [];
+    for (let i = 0; i < n; i++) {
+      const word = WORDS[spans[i].wi];
+      pos.push({ x: word.customX, y: word.customY });
+    }
+    return pos;
+  }
+
+  // use visually-scaled widths so layout reflects actual rendered size
+  const widths=spans.map(s=>(s.w||40)*(s.emS||1)*0.8);
+  const gh=spans.reduce((a,s)=>Math.max(a,s.h),18);
+  const gap=Math.max(14, gh*0.45), lineH=gh*1.6, pos=[];
+
+  function rowWrap(){
+    const maxW=Math.min(vw*0.82,1100), rows=[[]]; let w=0;
+    for(let i=0;i<n;i++){
+      if(w+widths[i]>maxW && rows[rows.length-1].length){rows.push([]);w=0;}
+      rows[rows.length-1].push(i); w+=widths[i]+gap;
+    }
+    const totalH=(rows.length-1)*lineH;
+
+    // Line-level structural shift based on lineIdx (so syntax norm is kept, but placed differently)
+    const lineShiftX = (pseudoRandom(lineIdx * 13) - 0.5) * vw * 0.3;
+    const lineShiftY = (pseudoRandom(lineIdx * 17) - 0.5) * vh * 0.3;
+
+    rows.forEach((row,ri)=>{
+      let rw=row.reduce((a,i)=>a+widths[i],0)+gap*(row.length-1), x=-rw/2;
+      const y=-totalH/2+ri*lineH;
+      row.forEach(i=>{
+        // Individual subtle word jitter
+        const jitterX = (pseudoRandom(lineIdx * 100 + i) - 0.5) * gap * 0.8;
+        const jitterY = (pseudoRandom(lineIdx * 200 + i) - 0.5) * lineH * 0.3;
+        pos[i]={x:x+widths[i]/2 + lineShiftX + jitterX, y:y + lineShiftY + jitterY};
+        x+=widths[i]+gap;
+      });
+    });
+  }
+
+  // iterative deoverlap: push word pairs apart until none overlap
+  function deoverlap(){
+    for(let iter=0;iter<24;iter++){
+      let moved=false;
+      for(let i=0;i<n;i++) for(let j=i+1;j<n;j++){
+        const minX=(widths[i]+widths[j])*0.5+gap*0.6, minY=gh*0.82;
+        const dx=pos[j].x-pos[i].x, dy=pos[j].y-pos[i].y;
+        if(Math.abs(dx)<minX && Math.abs(dy)<minY){
+          // push along the axis with least overlap to resolve
+          const ox=minX-Math.abs(dx), oy=minY-Math.abs(dy);
+          if(ox<oy){ const p=ox*0.5*(dx>=0?1:-1); pos[i].x-=p; pos[j].x+=p; }
+          else      { const p=oy*0.5*(dy>=0?1:-1); pos[i].y-=p; pos[j].y+=p; }
+          moved=true;
+        }
+      }
+      if(!moved) break;
+    }
+  }
+
+  if(metaphor==='row'){ rowWrap(); deoverlap(); }
+  else if(metaphor==='split'){ rowWrap(); pos.forEach((p,i)=>p.x+=(i%2?1:-1)*Math.min(vw*0.13,150)); deoverlap(); }
+  else if(metaphor==='ascend'||metaphor==='fall'){ const spanW=Math.min(vw*0.74,880), stepx=spanW/Math.max(1,n-1), H=Math.min(vh*0.52,380), stepy=H/Math.max(1,n-1), dir=(metaphor==='ascend'?-1:1);
+    for(let i=0;i<n;i++) pos[i]={x:-spanW/2+i*stepx, y:(metaphor==='ascend'?H/2:-H/2)+dir*i*stepy}; }
+  else if(metaphor==='stack'){ const totalH=(n-1)*lineH; for(let i=0;i<n;i++) pos[i]={x:0,y:-totalH/2+i*lineH}; }
+  else if(metaphor==='spiral'){ for(let i=0;i<n;i++){ const a=i*0.7, r=22+i*Math.min(vw,vh)*0.032; pos[i]={x:Math.cos(a)*r, y:Math.sin(a)*r}; } }
+  else if(metaphor==='path'){ const spanW=Math.min(vw*0.82,940); for(let i=0;i<n;i++){ const f=i/Math.max(1,n-1); pos[i]={x:-spanW/2+f*spanW, y:(f-0.5)*Math.min(vh*0.42,320)}; } }
+  else if(metaphor==='cage'){ const W=Math.min(vw*0.5,520), H=Math.min(vh*0.5,360), per=2*(W+H); for(let i=0;i<n;i++){ let d=(i/n)*per,x,y; if(d<W){x=-W/2+d;y=-H/2;} else if(d<W+H){x=W/2;y=-H/2+(d-W);} else if(d<2*W+H){x=W/2-(d-W-H);y=H/2;} else {x=-W/2;y=H/2-(d-2*W-H);} pos[i]={x,y}; } }
+  else if(metaphor==='cagebars'){ const spanW=Math.min(vw*0.72,840), step=spanW/Math.max(1,n); for(let i=0;i<n;i++) pos[i]={x:-spanW/2+step*(i+0.5), y:0}; }
+  else{ rowWrap(); deoverlap(); }
+
+  // clamp every word to the safe viewport inset
+  const mx=vw*0.47, my=vh*0.43;
+  for(let i=0;i<n;i++){ const hw=widths[i]/2+6, hh=gh/2+6;
+    pos[i].x=Math.max(-mx+hw, Math.min(mx-hw, pos[i].x));
+    pos[i].y=Math.max(-my+hh, Math.min(my-hh, pos[i].y)); }
+  return pos;
+}
+function embBuild(li){
+  embClear(); EMB.lineIdx=li; if(li<0||li>=LINES.length) return;
+  const idx=LINES[li].idx; const scene=sceneForLine(li); EMB.scene=scene;
+  const spans=idx.map(wi=>{ const w=WORDS[wi]; const d=w.dir||null;
+    let emph = d? d.emphasis : (FUNCTION_POS.has(w.pos)?0 : (w.pos==='PROPN'?3 : ((w.pos==='NOUN'||w.pos==='VERB')?2:1)));
+    emph=Math.max(0,Math.min(3,emph|0));
+    let cls='ew'+(emph===0?' fn':'');
+    if(d&&d.register==='script') cls+=' script'; else if(d&&d.register==='heavy') cls+=' heavy';
+    if(d&&d.glow) cls+=' glow';
+    const el=document.createElement('span'); el.className=cls; el.textContent=w.text;
+    if(d&&d.icon&&iconGlyph(d.icon)){ const g=iconGlyph(d.icon); const n=Math.max(1,Math.min(4,d.count||1)); for(let c=0;c<n;c++){ const ic=document.createElement('span'); ic.className='ic'; ic.textContent=g; el.appendChild(ic); } }
+    embodyLayer.appendChild(el); return {wi, el, sung:false, placed:false, rot:0, emS:[0.66,0.92,1.16,1.34][emph]}; });
+  spans.forEach(s=>{ s.w=s.el.offsetWidth||40; s.h=s.el.offsetHeight||28; });
+  // AI pipeline (METAS/SCENES) owns metaphor layouts; browser-only mode stays clean row
+  const hasAI = METAS.length > 0 || SCENES.length > 0;
+  const metaphor = hasAI ? ((scene&&scene.metaphor)||metaForLine(li)) : 'row';
+  const targets=embLayoutPx(spans, metaphor, li);
+  // scene rotations: e.g. "back" -> 90deg (a figure turning away); cagebars -> all words become vertical bars
+  if(scene&&scene.rotate){ spans.forEach(s=>{ const k=clean(WORDS[s.wi].text); for(const rk in scene.rotate){ if(k===clean(rk)) s.rot=scene.rotate[rk]; } }); }
+  if(metaphor==='cagebars'){ spans.forEach(s=>{ if(!s.rot) s.rot=90; }); }
+  // each word is PARKED (hidden, just below its spot) and only "places" when it is sung (see render loop)
+  spans.forEach((s,i)=>{ const tx=targets[i].x.toFixed(0), ty=targets[i].y.toFixed(0);
+    s.base='translate(calc(-50% + '+tx+'px), calc(-50% + '+ty+'px)) rotate('+s.rot+'deg)';
+    s.el.style.transform='translate(calc(-50% + '+tx+'px), calc(-50% + '+(targets[i].y+38).toFixed(0)+'px)) rotate('+s.rot+'deg) scale('+(s.emS*0.8).toFixed(2)+')';
+    s.el.style.opacity='0'; s.placed=false; });
+  if(scene&&scene.symbol){ const sym=document.createElement('div'); sym.className='esym'; sym.textContent=scene.symbol; embodyLayer.appendChild(sym); EMB.sym={el:sym, on:clean(scene.on||'')}; }
+  if(scene&&scene.figure){ const fig=document.createElement('div'); fig.className='efig'; fig.textContent=(typeof scene.figure==='string'?scene.figure:'🧍'); embodyLayer.appendChild(fig); EMB.fig=fig; }
+  void embodyLayer.offsetWidth;  // reflow so each word's placement animates when revealed
+  EMB.spans=spans; EMB.metaphor=metaphor;
+}
+function renderEmbodimentDOM(now){
+  if(!LINES.length) return;
+  let li=0; for(let k=0;k<LINES.length;k++){ if(now>=LINES[k].start-0.15) li=k; else break; }
+  if(li!==EMB.lineIdx) embBuild(li);
+  const ln=LINES[EMB.lineIdx]; if(!ln) return;
+  for(const s of EMB.spans){ const w=WORDS[s.wi];
+    // PACED-TO-PLACED: a word drops into its spot exactly when it's sung (synced), not all at once
+    if(!s.placed && now>=w.start-0.04){ s.placed=true; s.el.style.opacity=(s.emS<=0.7?'0.6':'1'); s.el.style.transform=s.base+' scale('+s.emS.toFixed(2)+')'; }
+    if(s.placed){ const sung=now>=w.start-0.05 && now<=w.end+0.12;
+      if(sung!==s.sung){ s.sung=sung; s.el.classList.toggle('sung',sung); s.el.style.transform=s.base+' scale('+(s.emS*(sung?1.3:1)).toFixed(2)+')'; } } }
+  // embedded symbol (e.g. peace sign) reveals as its target word is sung
+  if(EMB.sym){ const on = EMB.sym.on ? EMB.spans.some(s=>clean(WORDS[s.wi].text)===EMB.sym.on && now>=WORDS[s.wi].start-0.05)
+                                     : (now>=ln.start+0.2); EMB.sym.el.classList.toggle('on', !!on); }
+  // caged figure "breaks free" late in the line
+  if(EMB.fig && EMB.scene){ const p=(now-ln.start)/Math.max(0.3,(ln.end-ln.start)); EMB.fig.classList.toggle('free', p>(EMB.scene.breakAt||0.7)); }
+}
+
+/* ============================================================================
+   PART 5 — DOM LAYER  (rhyme scheme color-coded karaoke)
+   ========================================================================== */
+const DOM={built:false,lineEls:[],wordEls:[],active:-1,cont:null};
+function buildDOMOnce(){
+  if(DOM.built) return; domLayer.innerHTML=''; DOM.lineEls=[]; DOM.wordEls=new Array(WORDS.length); DOM.active=-1;
+  ensureRhymeGroups();
+  const head=document.createElement('div'); head.id='dom-head';
+  head.innerHTML='<span>'+(TRACK_NAME||'Rhyme Scheme')+'</span><span class="lg">LYRISEE</span>'; domLayer.appendChild(head);
+  const cont=document.createElement('div'); cont.id='dom-lines'; domLayer.appendChild(cont); DOM.cont=cont;
+  LINES.forEach((ln,li)=>{ const le=document.createElement('div'); le.className='line'; le.dataset.li=li;
+    ln.idx.forEach(wi=>{ const w=WORDS[wi]; const ws=document.createElement('span'); ws.className='w'+(w.rhyme>=0?' rg':''); ws.dataset.wi=wi;
+      ws.textContent=w.text.replace(/\s+/g,' ');
+      if(w.rhyme>=0 && RHYME_PAL[w.rhyme]) ws.style.background=RHYME_PAL[w.rhyme];
+      le.appendChild(ws); le.appendChild(document.createTextNode(' ')); DOM.wordEls[wi]=ws; });
+    cont.appendChild(le); DOM.lineEls.push(le); });
+  DOM.built=true;
+}
+function updateDOM(now){
+  if(!LINES.length||!DOM.built) return;
+  let active=0; for(let li=0;li<LINES.length;li++){ if(now>=LINES[li].start-0.2) active=li; else break; }
+  if(active!==DOM.active){
+    if(DOM.active>=0 && LINES[DOM.active]) LINES[DOM.active].idx.forEach(wi=>{const e=DOM.wordEls[wi]; if(e)e.classList.remove('sung');});
+    DOM.active=active;
+    DOM.lineEls.forEach((le,li)=>le.classList.toggle('active', li===active));
+    const le=DOM.lineEls[active]; if(le&&DOM.cont){ const y=Math.max(0, le.offsetTop - domLayer.clientHeight*0.40); DOM.cont.style.transform='translateY('+(-y).toFixed(0)+'px)'; }
+  }
+  for(const wi of LINES[active].idx){ const w=WORDS[wi]; const el=DOM.wordEls[wi]; if(el) el.classList.toggle('sung', now>=w.start-0.04 && now<=w.end+0.14); }
+}
+
+/* ============================================================================
+   PART 6 — CONSTRUCTS
+   ========================================================================== */
+const CONSTRUCTS=[
+  {id:'embodiment',label:'Embodiment — Words as Imagery',layer:'embody',
+   desc:'Each line reconstructs from scattered words and arranges into a shape that embodies its meaning — a cage boxes the words in, "rise/elevate" climbs, "rock bottom" sinks, a "path" runs diagonal, "spiral" curls — while the sung word flares. Legible and metaphorical. (No WebGL needed.)'},
+  {id:'kinetic_art',label:'Kinetic Art — Die Alone Style',layer:'gl',theme:'kinetic_art',
+   desc:'Deep crimson stage. Words ghost until their exact sung moment, then snap bright and scale by part-of-speech — nouns & verbs explode, function words whisper.'},
+  {id:'rhyme_scheme',label:'Rhyme Scheme — Color Coded',layer:'dom',
+   desc:'Centered lyric lines on a dark stage. In-browser phonetic analysis groups rhyming words into colors; each word\'s box flares as it\'s sung.'},
+  {id:'chameleon',label:'Rhyme Matrix — Vivid',layer:'gl',theme:'chameleon',
+   desc:'High-contrast neon kinetic typography with semantic color highlighting and beat-synced motion.'},
+  {id:'classic',label:'Classic 3D Drift',layer:'gl',theme:'classic',
+   desc:'Metallic 3D weave — letters wave and rotate as each word lives and dies.'}
+];
+let cur=CONSTRUCTS[0];
+function populateConstructs(includeGL){
+  constructSel.innerHTML='';
+  CONSTRUCTS.filter(c=>includeGL||c.layer!=='gl').forEach(c=>{const o=document.createElement('option');o.value=c.id;o.textContent=c.label;constructSel.appendChild(o);});
+}
+function setConstruct(id){
+  const c=CONSTRUCTS.find(x=>x.id===id)||CONSTRUCTS[0]; cur=c; constructSel.value=c.id; constructDesc.textContent=c.desc;
+  if(GL.ok){ GL.active.forEach(w=>w.dispose()); GL.active.clear(); }
+  embClear();
+  canvas.style.display    = (c.layer==='gl')     ? 'block' : 'none';
+  domLayer.style.display  = (c.layer==='dom')    ? 'flex'  : 'none';
+  embodyLayer.style.display = (c.layer==='embody') ? 'block' : 'none';
+  if(c.layer==='gl'){ curTheme=GL_THEMES[c.theme]||GL_THEMES.kinetic_art; stage.style.background=curTheme.bg; if(GL.ok&&GL.scene.fog) GL.scene.fog.color.setHex(curTheme.fog); }
+  else if(c.layer==='embody'){ stage.style.background=(CONCEPT&&CONCEPT.palette&&CONCEPT.palette.bg)||'#0b0c10'; }
+  else { stage.style.background='#0a0a0b'; DOM.built=false; buildDOMOnce(); DOM.shownLo=-1; DOM.shownHi=-1; }
+}
+
+/* Intent-driven auto-arrangement: switch construct by section as the song plays */
+function applyArrangement(now){
+  if(!autoArrange || !ARRANGEMENT.length) return;
+  let id=ARRANGEMENT[0].construct;
+  for(const a of ARRANGEMENT){ if(now>=(a.start||0)) id=a.construct; else break; }
+  if(id && id!==cur.id){ setConstruct(id); constructSel.value=cur.id; }
+}
+
+/* ============================================================================
+   PART 7 — RENDER LOOP
+   ========================================================================== */
+function updateBeat(now){
+  let bi=GL.lastBeat; while(bi+1<BEATS.length && BEATS[bi+1]<=now) bi++;
+  if(bi!==GL.lastBeat && bi>=0){ GL.beatPulse=1; GL.lastBeat=bi; }
+  GL.beatPulse*=0.86; if(GL.beatPulse<0.001) GL.beatPulse=0;
+  if(BEATS[GL.lastBeat]>now){ GL.lastBeat=-1; while(GL.lastBeat+1<BEATS.length && BEATS[GL.lastBeat+1]<=now) GL.lastBeat++; }
+}
+let lastNow=0, scrubbing=false;
+
+/* Line-by-Line Approval Mode */
+let approvalMode = false;
+let approvedLines = new Set();
+let pendingLineIdx = -1;
+const approvalModeCheck = document.getElementById('approvalModeCheck');
+const approvalModal = document.getElementById('approvalModal');
+const apprOrig = document.getElementById('apprOrig');
+const apprInput = document.getElementById('apprInput');
+const apprBtn = document.getElementById('apprBtn');
+
+approvalModeCheck.addEventListener('change', (e) => {
+  approvalMode = e.target.checked;
+  if(!approvalMode) { approvalModal.style.display='none'; }
+});
+
+function checkApproval(now) {
+  if (!approvalMode || !LINES.length) return;
+
+  // Find the next upcoming line or current line
+  let li = -1;
+  for (let k = 0; k < LINES.length; k++) {
+    if (now >= LINES[k].start - 0.2) {
+      li = k;
+    } else {
+      break;
+    }
+  }
+
+  if (li >= 0 && !approvedLines.has(li)) {
+    // Pause playback
+    if (Clock.playing) Clock.pause();
+    pendingLineIdx = li;
+
+    // Show modal
+    const ln = LINES[li];
+    const words = ln.idx.map(wi => WORDS[wi]);
+    const origText = words.map(w => w.original_text || w.text).join(' ');
+    const currText = words.map(w => w.text).join(' ');
+
+    apprOrig.textContent = origText;
+    apprInput.value = currText;
+    approvalModal.style.display = 'flex';
+  }
+}
+
+apprBtn.addEventListener('click', () => {
+  if(pendingLineIdx >= 0) {
+    const ln = LINES[pendingLineIdx];
+    const newText = apprInput.value.trim();
+    const words = ln.idx.map(wi => WORDS[wi]);
+    const oldText = words.map(w => w.text).join(' ');
+
+    if (newText !== oldText) {
+      // Split new text and distribute across words proportionally, or simply update word text
+      // For simplicity in keeping timing while changing words:
+      const newTokens = newText.split(/\s+/);
+      const oldTokens = words;
+
+      // We keep original_text for history
+      oldTokens.forEach(w => {
+        if(!w.original_text) w.original_text = w.text;
+      });
+
+      // If word counts match, 1-to-1 replacement
+      if(newTokens.length === oldTokens.length) {
+         oldTokens.forEach((w, i) => w.text = newTokens[i]);
+      } else {
+         // More complex: merge or split, but for MVP we adjust text of first word and clear rest,
+         // OR we just rebuild the words array for this line (tricky with timings)
+         // Let's just store the full line text in the first word and clear the rest as a fallback
+         // or ideally, just update text property to reconstructed string.
+         // Let's try basic distribution:
+         let j=0;
+         for(let i=0; i<oldTokens.length; i++){
+            oldTokens[i].text = (i < newTokens.length) ? newTokens[i] : '';
+            j=i;
+         }
+         if(newTokens.length > oldTokens.length) {
+            oldTokens[j].text += ' ' + newTokens.slice(j+1).join(' ');
+         }
+      }
+
+      // Re-run line builder if necessary, but just updating text in place will mostly work for WebGL/DOM
+      // Clear WebGL cache
+      if(GL.ok) { GL.active.forEach(w=>w.dispose()); GL.active.clear(); }
+      embClear();
+      if(cur&&cur.layer==='dom') buildDOMOnce();
+    }
+
+    approvedLines.add(pendingLineIdx);
+    pendingLineIdx = -1;
+    approvalModal.style.display = 'none';
+    Clock.play();
+  }
+});
+
+function frame(){
+  requestAnimationFrame(frame); Clock.tick();
+  const now=Clock.time; const dt=Math.min(0.05,Math.max(0,now-lastNow)); lastNow=now;
+  const effNow = now - (window.lyricOffsetMs / 1000);
+  if(!scrubbing) scrub.value=Math.round((now/Clock.duration)*1000)||0;
+  timeEl.textContent=fmt(now)+' / '+fmt(Clock.duration);
+  updateBeat(effNow); applyArrangement(effNow); checkApproval(effNow);
+  if(cur.layer==='embody'){ renderEmbodimentDOM(effNow); }
+  else if(cur.layer==='gl' && GL.ok && GL.font){
+    const LEAD=0.1,TAIL=0.18;  // tight windows -> few words coexist (no center pile-up)
+    for(let i=0;i<WORDS.length;i++){ const w=WORDS[i]; const on=effNow>=w.start-LEAD&&effNow<=w.end+TAIL;
+      if(on&&!GL.active.has(i)) GL.active.set(i,new GLWord(i,curTheme));
+      else if(!on&&GL.active.has(i)){GL.active.get(i).dispose();GL.active.delete(i);} }
+    GL.active.forEach(w=>w.update(effNow,dt));
+    GL.camera.position.z=260-GL.beatPulse*18; GL.camera.lookAt(0,0,0); GL.renderer.render(GL.scene,GL.camera);
+  } else if(cur.layer==='dom'){ updateDOM(effNow); }
+}
+
+/* ============================================================================
+   PART 8 — INGEST (any audio + any lyric data + optional in-browser ASR)
+   ========================================================================== */
+let lastAudioFile=null, dataReady=false;
+function setStatus(t){ ingestStatus.textContent=t||''; }
+const logPanel=document.getElementById('logPanel');
+let _timerInterval=null;
+function logStart(){
+  logPanel.innerHTML=''; logPanel.style.display='block';
+  if(_timerInterval) clearInterval(_timerInterval);
+  const t0=Date.now();
+  _timerInterval=setInterval(()=>{
+    const s=((Date.now()-t0)/1000).toFixed(0);
+    const el=document.getElementById('_elapsed');
+    if(el) el.textContent=s+'s';
+  },500);
+}
+function logLine(text, cls){
+  const line=document.createElement('div'); line.className='log-line'+(cls?' '+cls:'');
+  line.textContent=text; logPanel.appendChild(line);
+  logPanel.scrollTop=logPanel.scrollHeight;
+}
+function logStop(){
+  if(_timerInterval){ clearInterval(_timerInterval); _timerInterval=null; }
+}
+function refreshPlay(){ playBtn.disabled=!dataReady; }
+function applyBackground(){
+  const val = document.getElementById('bgSel').value;
+  const bgLayer = document.getElementById('bgLayer');
+  const bgVideo = document.getElementById('bgVideo');
+  const domLayer = document.getElementById('dom-layer');
+
+  bgLayer.className = '';
+  bgVideo.style.opacity = '0';
+  bgLayer.style.opacity = '0';
+
+  if (val === 'plain') {
+     bgLayer.className = 'bg-plain';
+     bgLayer.style.opacity = '1';
+  } else if (val === 'generic') {
+     bgLayer.className = 'bg-generic';
+     bgLayer.style.opacity = '1';
+  } else if (val === 'textured') {
+     bgLayer.className = 'bg-textured';
+     bgLayer.style.opacity = '1';
+  } else if (val === 'video') {
+     bgVideo.style.opacity = '1';
+  }
+}
+
+function attachAudio(file){
+  if(Clock.audio) { Clock.audio.pause(); Clock.audio.src=''; Clock.audio=null; }
+  lastAudioFile=file;
+  const isVideo = file.type.startsWith('video/');
+  const media = isVideo ? document.getElementById('bgVideo') : new Audio();
+  media.src=URL.createObjectURL(file); media.preload='auto';
+  if(isVideo) {
+      document.getElementById('optVideo').style.display='block';
+      document.getElementById('bgSel').value='video';
+      applyBackground();
+  } else {
+      document.getElementById('optVideo').style.display='none';
+      if (document.getElementById('bgSel').value === 'video') {
+          document.getElementById('bgSel').value = 'theme';
+          applyBackground();
+      }
+  }
+  media.addEventListener('loadedmetadata',()=>{ const wasPlaying=Clock.playing; const t=Clock.time; Clock.audio=media;
+    try{media.currentTime=Math.min(t,media.duration||t);}catch(e){} if(wasPlaying)media.play().catch(()=>{}); });
+  if(!TRACK_NAME){ TRACK_NAME=file.name; if(trackNameEl) trackNameEl.textContent=TRACK_NAME; }
+  audioBtn.textContent='♪ '+(file.name.length>16?file.name.slice(0,15)+'…':file.name);
+}
+function onAudioChosen(file){ if(!file) return; attachAudio(file);
+  dropZone.innerHTML='Audio: <b>'+file.name+'</b>';
+  setStatus(dataReady?'Media attached. Ready to play.':'Media loaded. Now add a lyric_data.json, or auto-transcribe.'); }
+function onJSONChosen(file){
+  if(!file) return;
+  const r=new FileReader();
+  r.onload=()=>{
+    if (file.name.endsWith('.txt')) {
+      window.rawLyricsText = r.result;
+      if (dataReady && WORDS.length) {
+         WORDS = alignLyrics(WORDS, window.rawLyricsText);
+         loadData({words: WORDS, beats: BEATS, arrangement: ARRANGEMENT, metaphors: METAS, scenes: SCENES, concept: CONCEPT, rhyme_palette: RHYME_PAL}, TRACK_NAME);
+         setStatus('Raw text aligned! ' + WORDS.length + ' words · ' + LINES.length + ' lines. Ready.');
+      } else {
+         setStatus('Raw text loaded. Now add audio and run transcription.');
+      }
+      return;
+    }
+
+    try{
+      const d=JSON.parse(r.result);
+      if (window.rawLyricsText && d.words) d.words = alignLyrics(d.words, window.rawLyricsText);
+      const n=loadData(d, TRACK_NAME||file.name.replace(/\.[^.]+$/,''));
+      if(!n) throw new Error('no words');
+      dataReady=true; setStatus('Loaded '+n+' words · '+LINES.length+' lines'+(BEATS.length?' · '+BEATS.length+' beats':'')+'. Ready.'); refreshPlay();
+    }
+    catch(e){ setStatus('That isn\'t a lyric_data file — it needs a "words" array of {text,start,end,pos}.'); }
+  };
+  r.readAsText(file);
+}
+
+function runCloudAI() {
+  const HF_BACKEND = "https://acecalisto3-lyrisee.hf.space/process";
+  let apiUrl = document.getElementById('apiUrlInput').value.trim();
+  if (!apiUrl) apiUrl = window.location.hostname.includes("hf.space") ? "/process" : HF_BACKEND;
+  if (!apiUrl.endsWith('/process')) apiUrl = apiUrl.replace(/\/$/, '') + '/process';
+  if (!lastAudioFile) { setStatus('Load an audio or video file first.'); return; }
+
+  const btn = document.getElementById('processBtn');
+  btn.disabled = true;
+  logStart();
+  ingestStatus.innerHTML = 'Uploading 0%… <span id="_elapsed">0s</span>';
+
+  const provider = document.getElementById('aiProviderSel').value;
+  const formData = new FormData();
+  formData.append('file', lastAudioFile);
+  formData.append('ai_provider', provider);
+  formData.append('master_audio', document.getElementById('masterAudioCheck') ? document.getElementById('masterAudioCheck').checked : false);
+  formData.append('separate_vocals', document.getElementById('separateVocalsCheck') ? document.getElementById('separateVocalsCheck').checked : false);
+
+  const xhr = new XMLHttpRequest();
+  xhr.open('POST', apiUrl);
+  let sseOffset = 0, result = null;
+
+  // ── upload progress ──────────────────────────────────────────────────────
+  xhr.upload.onprogress = function(e) {
+    if (!e.lengthComputable) return;
+    const pct = Math.round(e.loaded / e.total * 100);
+    ingestStatus.innerHTML = 'Uploading ' + pct + '%… <span id="_elapsed">0s</span>';
+  };
+  xhr.upload.onload = function() {
+    ingestStatus.innerHTML = '☁️ File received — processing… <span id="_elapsed">0s</span>';
+    logLine('[upload] file transferred, pipeline starting…');
+  };
+
+  // ── streaming log lines while backend runs ───────────────────────────────
+  function parseSseChunk() {
+    const chunk = xhr.responseText.slice(sseOffset);
+    const lastNewline = chunk.lastIndexOf('\n');
+    if (lastNewline === -1) return;
+    const completeData = chunk.slice(0, lastNewline);
+    sseOffset += lastNewline + 1;
+    completeData.split('\n').forEach(function(line) {
+      if (!line.startsWith('data: ')) return;
+      var msg; try { msg = JSON.parse(line.slice(6)); } catch(e) { return; }
+      if (msg.log) {
+        var cls = msg.log.startsWith('[done]') ? 'log-done' : '';
+        logLine(msg.log, cls);
+        if (msg.log.includes('[asr]'))   ingestStatus.innerHTML = '⏳ Transcribing… <span id="_elapsed">0s</span>';
+        else if (msg.log.includes('[beats]')) ingestStatus.innerHTML = '🎵 Beat tracking… <span id="_elapsed">0s</span>';
+      }
+      if (msg.error) { logLine('ERROR: ' + msg.error, 'log-err'); }
+      if (msg.done && msg.result) result = msg.result;
+    });
+  }
+  xhr.onprogress = parseSseChunk;
+
+  // ── done ─────────────────────────────────────────────────────────────────
+  xhr.onload = function() {
+    parseSseChunk(); // flush any remaining data
+    logStop();
+    btn.disabled = false;
+    if (xhr.status !== 200) {
+      logLine('HTTP ' + xhr.status + ' — ' + xhr.statusText, 'log-err');
+      setStatus('Cloud processing failed: HTTP ' + xhr.status);
+      return;
+    }
+    if (!result) {
+      // backend might have returned plain JSON (older deploy) — try parsing directly
+      try { result = JSON.parse(xhr.responseText); } catch(e) {}
+    }
+    if (!result || !result.words) {
+      logLine('No result received — check logs above.', 'log-err');
+      setStatus('Cloud processing failed: no result data.');
+      return;
+    }
+
+    if (window.rawLyricsText && result.words) {
+      result.words = alignLyrics(result.words, window.rawLyricsText);
+    }
+
+    var n = loadData(result, TRACK_NAME || lastAudioFile.name.replace(/\.[^.]+$/, ''));
+    dataReady = true;
+    setStatus('Done — ' + n + ' words · ' + LINES.length + ' lines. Ready to play.');
+    refreshPlay();
+  };
+
+  xhr.onerror = function() {
+    logStop(); btn.disabled = false;
+    logLine('Network error — is the HF Space running?', 'log-err');
+    setStatus('Cloud processing failed: network error.');
+  };
+  xhr.ontimeout = function() {
+    logStop(); btn.disabled = false;
+    logLine('Request timed out after 10 minutes.', 'log-err');
+    setStatus('Cloud processing timed out.');
+  };
+
+  xhr.timeout = 600000; // 10 minutes
+  xhr.send(formData);
+}
+
+async function autoTranscribe(){
+  if(!lastAudioFile){ setStatus('Load an audio or video file first.'); return; }
+  const _pBtn=document.getElementById('processBtn'); _pBtn.disabled=true;
+  logStart();
+  logLine('[browser] loading Whisper model (whisper-tiny.en, ~40 MB — cached after first run)');
+  setStatus('⏳ Loading speech model…');
+  try{
+    const mod=await import('https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2');
+    mod.env.allowLocalModels=false;
+    const asr=await mod.pipeline('automatic-speech-recognition','Xenova/whisper-tiny.en',{quantized:true});
+    logLine('[browser] model ready — decoding audio buffer');
+    setStatus('⏳ Decoding audio…');
+    const buf=await lastAudioFile.arrayBuffer();
+    const AC=window.AudioContext||window.webkitAudioContext; const ac=new AC({sampleRate:16000});
+    const ab=await ac.decodeAudioData(buf); const pcm=ab.getChannelData(0);
+    logLine('[browser] decoding done — running speech recognition (this takes a while for long tracks)');
+    setStatus('⏳ Transcribing…');
+    const out=await asr(pcm,{return_timestamps:'word',chunk_length_s:30,stride_length_s:5});
+    let words=[];
+    if(out&&out.chunks&&out.chunks.length){
+      for(const c of out.chunks){ const txt=(c.text||'').trim(); if(!txt) continue; const ts=c.timestamp||[];
+        const s=+ts[0]||0, e=(ts[1]!=null?+ts[1]:s+0.3);
+        // a chunk may hold multiple words -> split evenly across its span
+        const toks=txt.split(/\s+/).filter(Boolean); const span=Math.max(0.12,(e-s)/toks.length);
+        toks.forEach((tk,j)=>words.push({text:tk,start:+(s+j*span).toFixed(3),end:+(s+(j+1)*span).toFixed(3),pos:quickPOS(tk)})); }
+    }
+    if(!words.length) throw new Error('no words returned');
+
+    if (window.rawLyricsText) {
+      words = alignLyrics(words, window.rawLyricsText);
+    }
+
+    const n=loadData({words,beats:[]}, TRACK_NAME||lastAudioFile.name.replace(/\.[^.]+$/,''));
+    logLine('[done] ' + n + ' words · ' + LINES.length + ' lines', 'log-done');
+    logStop();
+    dataReady=true; setStatus('Done — '+n+' words · '+LINES.length+' lines. Ready.'); refreshPlay();
+  }catch(e){
+    console.error(e);
+    logLine('ERROR: ' + e.message, 'log-err');
+    logStop();
+    setStatus('In-browser transcription failed: ' + e.message);
+  }
+  finally{ _pBtn.disabled=false; }
+}
+
+/* ============================================================================
+   PART 8b — LYRIC EDITOR (human-in-the-loop transcript correction)
+   ========================================================================== */
+/* Re-derive WORDS + LINES from edited line rows (text + start time), preserving the
+   user's line structure. Rhyme families, POS weighting and word-forms recompute from this. */
+function rebuildFromLines(editLines){
+  editLines=editLines.filter(l=>l.text&&l.text.trim()).sort((a,b)=>(a.start||0)-(b.start||0));
+  const words=[], lines=[];
+  for(let i=0;i<editLines.length;i++){
+    const ln=editLines[i]; const toks=ln.text.trim().split(/\s+/).filter(Boolean); if(!toks.length) continue;
+    const start=+ln.start||0; let end=+ln.end; if(!(end>start)) end=start+Math.max(1,toks.length*0.3);
+    const weights=toks.map(t=>syllableCount(t)); const tot=weights.reduce((a,b)=>a+b,0)||1; let acc=start; const idx=[];
+    for(let j=0;j<toks.length;j++){
+      const dur=(end-start)*weights[j]/tot; idx.push(words.length);
+      const wordObj = {text:toks[j],start:+acc.toFixed(3),end:+(acc+dur).toFixed(3),pos:quickPOS(toks[j])};
+      if (ln.customPos && ln.customPos[j]) {
+        wordObj.customX = ln.customPos[j].x;
+        wordObj.customY = ln.customPos[j].y;
+      }
+      words.push(wordObj); acc+=dur;
+    }
+    lines.push({idx,start,end});
+  }
+  WORDS=words; LINES=lines; WORD2LINE=new Int32Array(words.length); lines.forEach((l,li)=>l.idx.forEach(wi=>WORD2LINE[wi]=li));
+  DURATION=words.length?Math.max(words[words.length-1].end+2.5,4):8;
+  if(GL.ok){GL.active.forEach(w=>w.dispose());GL.active.clear();}
+  DOM.built=false; domLayer.innerHTML=''; DOM.shownLo=-1; DOM.shownHi=-1; if(cur&&cur.layer==='dom') buildDOMOnce(); GL.lastBeat=-1;
+}
+let _plotState = null;
+function openPlotView(row) {
+  const textInput = row.querySelector('.ed-x');
+  const timeInput = row.querySelector('.ed-t');
+  if (!textInput || !textInput.value.trim()) return;
+
+  const words = textInput.value.trim().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return;
+
+  if (Clock.playing) Clock.pause();
+  Clock.seek(parseFloat(timeInput.value) || 0);
+
+  const plotLayer = document.getElementById('plot-layer');
+  const plotHint = document.getElementById('plot-hint');
+  plotLayer.style.display = 'block';
+
+  _plotState = {
+    row: row,
+    words: words,
+    currentIndex: 0,
+    coords: [],
+    markers: []
+  };
+
+  updatePlotHint();
+
+  const clickHandler = function(e) {
+    if (e.target.closest('#plot-hint') || e.target.closest('.ed-plot-marker')) return;
+
+    const x = e.clientX - window.innerWidth / 2;
+    const y = e.clientY - window.innerHeight / 2;
+
+    _plotState.coords.push({x: x, y: y});
+
+    // Draw visual marker
+    const marker = document.createElement('div');
+    marker.className = 'ed-plot-marker ew fn';
+    marker.style.position = 'absolute';
+    marker.style.left = e.clientX + 'px';
+    marker.style.top = e.clientY + 'px';
+    marker.style.transform = 'translate(-50%, -50%)';
+    marker.style.pointerEvents = 'none';
+    marker.textContent = _plotState.words[_plotState.currentIndex];
+    plotLayer.appendChild(marker);
+    _plotState.markers.push(marker);
+
+    _plotState.currentIndex++;
+
+    if (_plotState.currentIndex >= _plotState.words.length) {
+      finishPlotting();
+    } else {
+      updatePlotHint();
+    }
+  };
+
+  const keyHandler = function(e) {
+    if (e.key === 'Escape') cancelPlotting();
+  };
+
+  function updatePlotHint() {
+    plotHint.textContent = `Tap to position word ${_plotState.currentIndex + 1} of ${_plotState.words.length} ("${_plotState.words[_plotState.currentIndex]}") (ESC to cancel)`;
+  }
+
+  function cleanupPlotting() {
+    plotLayer.removeEventListener('click', clickHandler);
+    document.removeEventListener('keydown', keyHandler);
+    _plotState.markers.forEach(m => m.remove());
+    plotLayer.style.display = 'none';
+    _plotState = null;
+  }
+
+  function finishPlotting() {
+    const row = _plotState.row;
+    row.dataset.customPos = JSON.stringify(_plotState.coords);
+    const plotBtn = row.querySelector('.ed-plot');
+    if (plotBtn) {
+      plotBtn.style.color = '#4f9';
+      plotBtn.style.borderColor = '#4f9';
+    }
+    cleanupPlotting();
+  }
+
+  function cancelPlotting() {
+    cleanupPlotting();
+  }
+
+  plotLayer.addEventListener('click', clickHandler);
+  document.addEventListener('keydown', keyHandler);
+}
+
+function edFmt(s){return (Math.round((+s||0)*10)/10).toFixed(1);}
+function edAddRow(start,text){
+  const row=document.createElement('div'); row.className='ed-row';
+  const t=document.createElement('input'); t.type='number'; t.step='0.1'; t.className='ed-t'; t.value=edFmt(start); t.title='line start (seconds)';
+  const x=document.createElement('input'); x.type='text'; x.className='ed-x'; x.value=text||''; x.spellcheck=false;
+  const plot=document.createElement('button'); plot.className='ed-plot ed-del'; plot.textContent='⌖'; plot.title='Plot word positions'; plot.addEventListener('click',()=>openPlotView(row));
+  const del=document.createElement('button'); del.className='ed-del'; del.textContent='×'; del.title='delete line'; del.addEventListener('click',()=>row.remove());
+  row.appendChild(t); row.appendChild(x); row.appendChild(plot); row.appendChild(del); edList.appendChild(row); return row;
+}
+function edPopulate(){
+  edList.innerHTML='';
+  if(!LINES.length){ edAddRow(0,''); return; }
+  LINES.forEach(ln=>{
+    const row = edAddRow(ln.start, ln.idx.map(wi=>WORDS[wi].text).join(' '));
+    // Check if line has custom pos
+    const customPos = [];
+    let hasCustomPos = false;
+    ln.idx.forEach(wi => {
+      if (WORDS[wi].customX !== undefined && WORDS[wi].customY !== undefined) {
+        customPos.push({x: WORDS[wi].customX, y: WORDS[wi].customY});
+        hasCustomPos = true;
+      } else {
+        customPos.push(null);
+      }
+    });
+    if (hasCustomPos) {
+      row.dataset.customPos = JSON.stringify(customPos);
+      const plotBtn = row.querySelector('.ed-plot');
+      if (plotBtn) {
+        plotBtn.style.color = '#4f9';
+        plotBtn.style.borderColor = '#4f9';
+      }
+    }
+  });
+}
+function edRead(){
+  const rows=[].slice.call(edList.querySelectorAll('.ed-row'));
+  let lines=rows.map(r=>{
+    let customPos = null;
+    if (r.dataset.customPos) {
+      try { customPos = JSON.parse(r.dataset.customPos); } catch(e) {}
+    }
+    return {
+      start:parseFloat(r.querySelector('.ed-t').value)||0,
+      text:r.querySelector('.ed-x').value||'',
+      customPos: customPos
+    };
+  }).filter(l=>l.text.trim());
+  lines.sort((a,b)=>a.start-b.start);
+  for(let i=0;i<lines.length;i++){ lines[i].end=(i+1<lines.length)?Math.max(lines[i].start+0.4,lines[i+1].start):lines[i].start+Math.max(1,lines[i].text.trim().split(/\s+/).length*0.3); }
+  return lines;
+}
+function edOpen(){ Clock.pause(); edPopulate(); editor.classList.add('open'); }
+function edCloseFn(){ editor.classList.remove('open'); }
+function edApplyFn(){ const lines=edRead(); if(!lines.length){edCloseFn();return;} const at=Clock.time; rebuildFromLines(lines); dataReady=true; refreshPlay(); edCloseFn(); Clock.seek(Math.min(at,DURATION)); Clock.play(); }
+function edDownloadFn(){
+  const lines=edRead(); if(lines.length) rebuildFromLines(lines);
+  const data={words:WORDS,beats:BEATS}; if(ARRANGEMENT.length) data.arrangement=ARRANGEMENT; const txt=JSON.stringify(data);
+  try{ const blob=new Blob([txt],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+    a.download=((TRACK_NAME||'lyrics').replace(/[^\w.-]+/g,'_'))+'_lyric_data.json'; document.body.appendChild(a); a.click(); a.remove(); }catch(e){}
+  if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(txt).then(()=>setStatus('Corrected JSON downloaded (and copied to clipboard).')).catch(()=>{}); }
+}
+
+/* ============================================================================
+   PART 9 — BOOT / WIRING
+   ========================================================================== */
+function start(){ if(!dataReady) return; intro.style.opacity='0'; setTimeout(()=>intro.style.display='none',600); stage.classList.add('playing'); if(!isFinite(Q_T)) Clock.seek(0); Clock.play(); }
+function wireUI(){
+  populateConstructs(true);
+  document.getElementById('bgSel').addEventListener('change', applyBackground);
+  constructSel.addEventListener('change',()=>{autoArrange=false;setConstruct(constructSel.value);});
+  ppBtn.addEventListener('click',()=>Clock.toggle());
+  scrub.addEventListener('input',()=>{scrubbing=true;Clock.seek(scrub.value/1000*Clock.duration);});
+  scrub.addEventListener('change',()=>{scrubbing=false;});
+
+  /* Export MediaRecorder Logic */
+  let exportRecorder = null;
+  let exportChunks = [];
+  let isExporting = false;
+  let exportCancelled = false;
+  let exportTargetTime = 0;
+  let exportAnimFrame = null;
+  let exportUseWatermark = false;
+  const compCanvas = document.createElement('canvas');
+  const compCtx = compCanvas.getContext('2d');
+
+  let ac = null;
+  let dest = null;
+  let sourceNode = null;
+
+  const exportBtn = document.getElementById('exportBtn');
+  const exportModal = document.getElementById('exportModal');
+  const exportSampleBtn = document.getElementById('exportSampleBtn');
+  const exportFullBtn = document.getElementById('exportFullBtn');
+  const exportFullPaidBtn = document.getElementById('exportFullPaidBtn');
+  const exportCancelBtn = document.getElementById('exportCancelBtn');
+  const exportProgressModal = document.getElementById('exportProgressModal');
+  const exportStatus = document.getElementById('exportStatus');
+  const exportStopBtn = document.getElementById('exportStopBtn');
+  const watermarkUI = document.getElementById('watermarkUI');
+  const bgVideo = document.getElementById('bgVideo');
+
+  exportBtn.addEventListener('click', () => {
+    exportModal.style.display = 'flex';
+  });
+  exportCancelBtn.addEventListener('click', () => {
+    exportModal.style.display = 'none';
+  });
+
+  // Mock payment gateway interaction
+  exportFullBtn.addEventListener('click', () => {
+    exportFullBtn.textContent = 'Processing Payment...';
+    setTimeout(() => {
+      exportFullBtn.style.display = 'none';
+      exportFullPaidBtn.style.display = 'block';
+    }, 1500);
+  });
+
+  function startExport(duration, useWatermark) {
+    if (!Clock.audio) { setStatus('Load media before exporting.'); return; }
+    exportModal.style.display = 'none';
+    exportProgressModal.style.display = 'flex';
+    isExporting = true;
+    exportTargetTime = duration;
+    exportUseWatermark = useWatermark;
+    exportCancelled = false;
+    exportChunks = [];
+
+    // Reset playback
+    Clock.pause();
+    Clock.seek(0);
+
+    // Setup Audio Routing
+    if (!ac) {
+      ac = new (window.AudioContext || window.webkitAudioContext)();
+      dest = ac.createMediaStreamDestination();
+    }
+    // Only create sourceNode once per media element
+    if (!sourceNode && Clock.audio) {
+      try {
+        sourceNode = ac.createMediaElementSource(Clock.audio);
+        sourceNode.connect(ac.destination); // Keep hearing it
+        sourceNode.connect(dest); // Route to recorder
+      } catch(e) {
+        console.warn("Audio Context error:", e);
+      }
+    }
+
+    if(ac.state === 'suspended') ac.resume();
+
+    // Setup Composite Canvas
+    compCanvas.width = canvas.width || window.innerWidth;
+    compCanvas.height = canvas.height || window.innerHeight;
+
+    const stream = compCanvas.captureStream(30);
+    // Merge audio if available
+    if (dest && dest.stream.getAudioTracks().length > 0) {
+      stream.addTrack(dest.stream.getAudioTracks()[0]);
+    }
+
+    try {
+      exportRecorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
+    } catch(e) {
+      exportRecorder = new MediaRecorder(stream);
+    }
+
+    exportRecorder.ondataavailable = e => { if (e.data.size > 0) exportChunks.push(e.data); };
+    exportRecorder.onstop = () => {
+      if (!exportCancelled) {
+        const blob = new Blob(exportChunks, { type: 'video/webm' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = ((TRACK_NAME||'lyrisee_video').replace(/[^\w.-]+/g,'_')) + '.webm';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+      }
+      exportProgressModal.style.display = 'none';
+      isExporting = false;
+      watermarkUI.classList.remove('show');
+      cancelAnimationFrame(exportAnimFrame);
+    };
+
+    if (useWatermark) watermarkUI.classList.add('show');
+
+    exportRecorder.start();
+    Clock.play();
+    drawExportFrame();
+  }
+
+  function drawExportFrame() {
+    if (!isExporting) return;
+    const now = Clock.time;
+
+    compCtx.fillStyle = window.getComputedStyle(document.body).backgroundColor || '#000';
+    compCtx.fillRect(0, 0, compCanvas.width, compCanvas.height);
+
+    if (bgVideo && bgVideo.style.opacity === '1') {
+      compCtx.drawImage(bgVideo, 0, 0, compCanvas.width, compCanvas.height);
+    }
+
+    compCtx.drawImage(canvas, 0, 0, compCanvas.width, compCanvas.height);
+
+
+    if (exportUseWatermark) {
+      compCtx.save();
+      compCtx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+      compCtx.font = '32px Anton, sans-serif';
+      compCtx.textAlign = 'right';
+      compCtx.textBaseline = 'bottom';
+      compCtx.fillText('LYRISEE', compCanvas.width - 30, compCanvas.height - 30);
+      compCtx.restore();
+    }
+
+    exportStatus.textContent = fmt(now) + ' / ' + fmt(exportTargetTime);
+
+    if (now >= exportTargetTime || now >= Clock.duration) {
+      exportRecorder.stop();
+      Clock.pause();
+    } else {
+      exportAnimFrame = requestAnimationFrame(drawExportFrame);
+    }
+  }
+
+  exportSampleBtn.addEventListener('click', () => {
+    startExport(15, true);
+  });
+  exportFullPaidBtn.addEventListener('click', () => {
+    startExport(Clock.duration, false);
+  });
+  exportStopBtn.addEventListener('click', () => {
+    exportCancelled = true;
+    if (exportRecorder && exportRecorder.state !== 'inactive') {
+      exportRecorder.stop();
+    }
+    exportProgressModal.style.display = 'none';
+    isExporting = false;
+    watermarkUI.classList.remove('show');
+    cancelAnimationFrame(exportAnimFrame);
+  });
+  /* End Export Logic */
+
+  const offsetSlider = document.getElementById('offsetSlider');
+  const offsetVal = document.getElementById('offsetVal');
+  offsetSlider.addEventListener('input', () => {
+    window.lyricOffsetMs = parseInt(offsetSlider.value, 10);
+    offsetVal.textContent = window.lyricOffsetMs + 'ms';
+  });
+
+  playBtn.addEventListener('click',start);
+  // ingest
+
+  dropZone.addEventListener('click',()=>audioInput.click());
+  dropZone.addEventListener('dragover',e=>{e.preventDefault();dropZone.classList.add('over');});
+  dropZone.addEventListener('dragleave',()=>dropZone.classList.remove('over'));
+  dropZone.addEventListener('drop',e=>{e.preventDefault();dropZone.classList.remove('over');const f=e.dataTransfer.files[0];
+    if(f){ if(/\.json$/i.test(f.name)) onJSONChosen(f); else onAudioChosen(f); }});
+  audioInput.addEventListener('change',e=>onAudioChosen(e.target.files[0]));
+  audioInput2.addEventListener('change',e=>onAudioChosen(e.target.files[0]));
+  jsonBtn.addEventListener('click',()=>jsonInput.click());
+  jsonInput.addEventListener('change',e=>onJSONChosen(e.target.files[0]));
+
+  // Cloud/Browser toggle
+  const cloudToggle=document.getElementById('cloudToggle');
+  const cloudToggleTrack=document.getElementById('cloudToggleTrack');
+  const cloudControls=document.getElementById('cloudControls');
+  const processBtn=document.getElementById('processBtn');
+  function applyToggle(){
+    const on=cloudToggle.checked;
+    cloudToggleTrack.classList.toggle('on',on);
+    cloudControls.style.display=on?'':'none';
+    processBtn.textContent=on?'⚡ Run Cloud AI':'🎤 Transcribe in Browser';
+  }
+  applyToggle();
+  cloudToggle.addEventListener('change',applyToggle);
+  document.getElementById('cloudToggleLabel').addEventListener('click',()=>{
+    cloudToggle.checked=!cloudToggle.checked; applyToggle();
+  });
+  processBtn.addEventListener('click',()=>{ if(cloudToggle.checked) runCloudAI(); else autoTranscribe(); });
+  editBtn.addEventListener('click',edOpen);
+  edClose.addEventListener('click',edCloseFn);
+  edApply.addEventListener('click',edApplyFn);
+  edDownload.addEventListener('click',edDownloadFn);
+  edAdd.addEventListener('click',()=>edAddRow(0,''));
+  audioBtn.addEventListener('click',()=>audioInput2.click());
+  demoLink.addEventListener('click',()=>{ const n=loadData(DEMO_DATA,'Dark Nights (demo)'); dataReady=true;
+    setStatus('Demo loaded: '+n+' words · '+LINES.length+' lines. Press Play. (Load audio to hear it in sync.)'); refreshPlay(); });
+  fsBtn.addEventListener('click',()=>{ if(!document.fullscreenElement) stage.requestFullscreen&&stage.requestFullscreen(); else document.exitFullscreen&&document.exitFullscreen(); });
+  document.addEventListener('keydown',e=>{ if(e.code==='Space'){e.preventDefault();Clock.toggle();} else if(e.code==='ArrowRight')Clock.seek(Clock.time+5); else if(e.code==='ArrowLeft')Clock.seek(Clock.time-5); else if(e.key==='f'||e.key==='F')fsBtn.click(); });
+  window.addEventListener('resize',()=>{ if(GL.ok){GL.camera.aspect=window.innerWidth/window.innerHeight;GL.camera.updateProjectionMatrix();GL.renderer.setSize(window.innerWidth,window.innerHeight);} });
+}
+function boot(){
+  wireUI(); setConstruct(Q_CONSTRUCT||CONSTRUCTS[0].id);
+  const fontUrl='https://cdn.jsdelivr.net/npm/three@0.128.0/examples/fonts/helvetiker_bold.typeface.json';
+  const finish=(font)=>{
+    let glok=false; try{ glok=font?initGL(font):false; }catch(e){ glok=false; }
+    if(AUTOLOAD_NAME){ const n=loadData(DEMO_DATA,AUTOLOAD_NAME); dataReady=true; refreshPlay();
+      if(AUTOLOAD_AUDIO){ var aud=new Audio(); aud.src=AUTOLOAD_AUDIO; aud.preload='auto';
+        aud.addEventListener('loadedmetadata',function(){ Clock.audio=aud; }); aud.addEventListener('error',function(){ setStatus('Loaded '+n+' words. (Audio file not found next to this page — use ♪ to load it.)'); });
+        audioBtn.textContent='♪ '+(AUTOLOAD_NAME.length>16?AUTOLOAD_NAME.slice(0,15)+'…':AUTOLOAD_NAME);
+        setStatus('Loaded '+n+' words. Press Play to start — with sound.'); }
+      else setStatus('Loaded '+n+' words.'); }
+    else if(Q_DEMO){ const n=loadData(DEMO_DATA,'Dark Nights (demo)'); dataReady=true; refreshPlay(); setStatus('Demo loaded: '+n+' words.'); }
+    if(!glok){ populateConstructs(false);
+      var glids={kinetic_art:1,chameleon:1,classic:1};
+      ARRANGEMENT=ARRANGEMENT.map(function(a){return glids[a.construct]?Object.assign({},a,{construct:'embodiment'}):a;});
+      if(glids[cur.id]) setConstruct('embodiment');   // keep the DOM word-art layers (Embodiment is the headline look)
+      var nt=document.getElementById('introNote');
+      if(nt) nt.innerHTML+=' <br><span style="color:#b9b6ad">3D constructs need WebGL (unavailable in this view) — using the DOM word-art layers (Embodiment + Rhyme Scheme).</span>'; }
+    if(isFinite(Q_T)) Clock.seek(Q_T);
+    // Autoplay the visual only when there is NO audio (browsers block audio autoplay without a gesture).
+    // With embedded audio, the intro's Play button starts sound + visual together.
+    var canAuto = Q_AUTOPLAY || (AUTOLOAD_NAME && !AUTOLOAD_AUDIO);
+    if(canAuto && dataReady){ start(); if(AUTOLOAD_NAME && !isFinite(Q_T) && AUTOLOAD_SEEK) Clock.seek(AUTOLOAD_SEEK); }
+    frame();
+  };
+  if(typeof THREE==='undefined'){ finish(null); return; }
+  try{ new THREE.FontLoader().load(fontUrl, f=>finish(f), undefined, ()=>finish(null)); }catch(e){ finish(null); }
+}
+boot();
+} catch(e) { console.error("BOOT ERROR:", e); }
+})();
 </script>
+
 </body>
 </html>

@@ -54,6 +54,8 @@
   .ew.heavy{font-family:'Archivo Black','Inter',sans-serif;font-weight:900;letter-spacing:.01em}
   .ew.glow{text-shadow:0 0 20px rgba(255,255,255,.65),0 0 8px rgba(255,255,255,.5)}
   .ew .ic{display:none}   /* ponytail: emoji icons retired — objects are drawn (.emotif) */
+  .ew.hit{color:var(--accent,#C41E3A)}
+  .ew.hit.sung{color:var(--accent,#C41E3A);text-shadow:0 0 26px var(--accent,#C41E3A)}
   /* DOM lyric layer (rhyme scheme / karaoke) */
   /* Rhyme Scheme = the emNoFavors rhyme-map: left-aligned lyric block, true rhyme families boxed in color */
   #dom-layer{position:absolute;inset:0;display:none;flex-direction:column;justify-content:flex-start;align-items:flex-start;
@@ -488,13 +490,26 @@ const VOWNAME={A:'AY',E:'EE',I:'LONG_I',O:'OH',U:'OO',W:'OW',Y:'OY',a:'AH',e:'EH
 const CODA_RULES=[[/ng|nk/g,'N'],[/tch|ch|sh|ge|j/g,'X'],[/th/g,'H'],[/[pb]/g,'P'],[/[td]/g,'T'],
                   [/[kgq]/g,'K'],[/[fv]/g,'F'],[/[szc]/g,'S'],[/[mn]/g,'N'],[/l/g,'L'],[/r/g,'R']];
 function codaClass(s){ let t=(s||'').toLowerCase(); for(const r of CODA_RULES) t=t.replace(r[0],r[1]); return t.replace(/[^A-Z]/g,''); }
-/* rime = last vowel nucleus + coda class. Exact rime = true rhyme; vowel alone = assonance / near-rhyme. */
+/* rime = last vowel nucleus + coda class. Exact rime = true rhyme; vowel alone = assonance / near-rhyme.
+   key2 carries the last TWO syllables so multis (escalated/medicated) beat the bare "-ated" match. */
+const LONGEN={a:'A',e:'E',i:'I',o:'O',u:'U'};
+function syllables(w){
+  const raw=[], re=/([AEIOUWYaeiou])([^AEIOUWYaeiou]*)/g; let m;
+  while((m=re.exec(w))) raw.push([m[1],m[2]]);
+  return raw.map((s,i)=>{ let v=s[0];
+    // open syllable (one consonant before the next vowel) says the vowel long: la-ter, fa-ded, ca-ted
+    if(i<raw.length-1 && s[1].length===1 && LONGEN[v]) v=LONGEN[v];
+    // unstressed final syllable reduces to schwa: -er/-or/-ar/-ur, -en/-on, -el/-al all rhyme
+    else if(i===raw.length-1 && raw.length>1 && LONGEN[v] && /^[rlns]?[sd]?$/.test(s[1])) v='u';
+    return {v:VOWNAME[v]||('V_'+v.toUpperCase()), c:codaClass(s[1])}; });
+}
 function rhymeParts(text){
   const w=phon(text); if(!w) return null;
-  const m=w.match(/([AEIOUWYaeiou])([^AEIOUWYaeiou]*)$/);
-  if(!m) return null;
-  const v=VOWNAME[m[1]]||('V_'+m[1].toUpperCase()), c=codaClass(m[2]);
-  return {vowel:v, coda:c, key:v+':'+c};
+  const syl=syllables(w); if(!syl.length) return null;
+  const last=syl[syl.length-1], key=last.v+':'+last.c;
+  const pen=syl.length>1?syl[syl.length-2]:null;
+  return {vowel:last.v, coda:last.c, key:key, syl:syl.length,
+          key2: pen? pen.v+':'+pen.c+'|'+key : null};
 }
 function rhymeKey(text){ const p=rhymeParts(text); return p?p.key:null; }
 
@@ -548,19 +563,48 @@ function computeWindowRhymes(centerLine, windowLines){
 /* Fallback rhyme grouping when the pipeline (rhyme_engine.py / CMUdict) didn't supply groups:
    group every content word by its phonetic assonance key across the whole song (internal rhymes too). */
 function ensureRhymeGroups(){
-  if(WORDS.some(w=>w.rhyme>=0) && RHYME_PAL.length) return;
+  if(WORDS.some(w=>w.rhyme>=0) && RHYME_PAL.length){   // pipeline supplied families — still shade them
+    LINES.forEach(ln=>{ for(let k=ln.idx.length-1;k>=0;k--){ const i=ln.idx[k];
+      if(WORDS[i].rhyme>=0 && !WORDS[i].rhymeNear){ WORDS[i].rhymeEnd=true; break; } } });
+    return; }
   const FAM=["#19E0E0","#A6E22E","#FF3D7F","#FF1E1E","#9D6B4A","#9AA0A6","#FF9F1C","#2D9CFF","#FF66C4","#B388FF","#7CFF6B","#E6C229","#FF5C2A","#5CE1E6"];
-  const byKey={}, parts=new Array(WORDS.length);
-  WORDS.forEach((w,i)=>{ w.rhyme=-1; w.rhymeNear=false; w.rhymeEnd=false;
-    if(FUNCTION_POS.has(w.pos))return; const p=rhymeParts(w.text); if(!p)return;
-    parts[i]=p; (byKey[p.key]=byKey[p.key]||[]).push(i); });
-  const fams=Object.keys(byKey).filter(k=>byKey[k].length>=2).sort((a,b)=>Math.min(...byKey[a])-Math.min(...byKey[b]));
-  RHYME_PAL=[]; const vowelFam={};
-  fams.forEach((k,fi)=>{ byKey[k].forEach(i=>WORDS[i].rhyme=fi); RHYME_PAL.push(FAM[fi%FAM.length]);
-    const v=k.split(':')[0]; if(vowelFam[v]==null) vowelFam[v]=fi; });
-  // near-rhyme: same vowel, different coda -> same family hue, lower intensity
+  const parts=new Array(WORDS.length);
+  WORDS.forEach((w,i)=>{ w.rhyme=-1; w.rhymeNear=false; w.rhymeEnd=false; w.rhymeChain=false;
+    if(FUNCTION_POS.has(w.pos))return; const p=rhymeParts(w.text); if(!p)return; parts[i]=p; });
+
+  RHYME_PAL=[]; const fams=[];                       // fams[fi] = {members:[wi], vowel}
+  const claim=(idxs,vowel,chain)=>{ const fi=fams.length; fams.push({vowel:vowel});
+    RHYME_PAL.push(FAM[fi%FAM.length]);
+    idxs.forEach(i=>{ WORDS[i].rhyme=fi; if(chain) WORDS[i].rhymeChain=true; }); return fi; };
+  const bucket=(pick)=>{ const b={};
+    WORDS.forEach((w,i)=>{ if(w.rhyme>=0||!parts[i])return; const k=pick(parts[i]); if(!k)return;
+      (b[k]=b[k]||[]).push(i); });
+    return Object.keys(b).filter(k=>b[k].length>=2)
+      .sort((a,b2)=>Math.min(...b[a])-Math.min(...b[b2])).map(k=>({k, idxs:b[k]})); };
+
+  // TIER 1 — multi-word tail chains: two lines whose last two content words rhyme as a unit
+  //          ("...seasonal reason" / "...even a demon") colour the whole pair, not just the last word.
+  const tails={};
+  LINES.forEach(ln=>{ const c=ln.idx.filter(i=>parts[i]); if(c.length<2)return;
+    const a=c[c.length-2], b=c[c.length-1];
+    const sig=parts[a].key+'|'+parts[b].key;
+    (tails[sig]=tails[sig]||[]).push([a,b]); });
+  Object.keys(tails).filter(s=>tails[s].length>=2)
+    .sort((a,b)=>Math.min(...tails[a].map(p=>p[0]))-Math.min(...tails[b].map(p=>p[0])))
+    .forEach(s=>{ const idxs=[].concat(...tails[s]);
+      claim(idxs, s.split('|')[1].split(':')[0], true); });
+
+  // TIER 2 — multisyllabic rime (last two syllables), then TIER 3 — single-syllable rime
+  bucket(p=>p.key2).forEach(g=>claim(g.idxs, g.k.split('|')[1].split(':')[0], false));
+  const vowelFam={};
+  bucket(p=>p.key).forEach(g=>{ const v=g.k.split(':')[0]; const fi=claim(g.idxs, v, false);
+    if(vowelFam[v]==null) vowelFam[v]=fi; });
+  fams.forEach((f,fi)=>{ if(f.vowel && vowelFam[f.vowel]==null) vowelFam[f.vowel]=fi; });
+
+  // TIER 4 — near-rhyme: same vowel, different coda -> same family hue, lower intensity
   WORDS.forEach((w,i)=>{ if(w.rhyme>=0||!parts[i])return; const fi=vowelFam[parts[i].vowel];
     if(fi==null)return; w.rhyme=fi; w.rhymeNear=true; });
+
   // line-final rhymes read at full intensity; the same family inside a line reads lighter
   LINES.forEach(ln=>{ for(let k=ln.idx.length-1;k>=0;k--){ const i=ln.idx[k];
     if(WORDS[i].rhyme>=0 && !WORDS[i].rhymeNear){ WORDS[i].rhymeEnd=true; break; } } });
@@ -569,7 +613,7 @@ function ensureRhymeGroups(){
 function rhymeShade(hex,a){ const h=(hex||'#888').replace('#','');
   const n=parseInt(h.length===3?h.replace(/(.)/g,'$1$1'):h,16);
   return 'rgba('+((n>>16)&255)+','+((n>>8)&255)+','+(n&255)+','+a+')'; }
-function rhymeIntensity(w){ return w.rhymeNear?0.3:(w.rhymeEnd?1:0.62); }
+function rhymeIntensity(w){ return w.rhymeNear?0.3:(w.rhymeChain||w.rhymeEnd?1:0.62); }
 
 /* Semantic-Visual Action Library: lyric intention -> motion archetype */
 const FORM_MAP=[
@@ -591,7 +635,7 @@ function semanticForm(word){const w=clean(word.text);for(const f of FORM_MAP){if
    ========================================================================== */
 function loadData(data, name){
   WORDS=(data&&data.words||[]).filter(w=>w&&w.text&&/\S/.test(w.text)).map(w=>{
-    const wordObj = {text:String(w.text),start:+w.start||0,end:+w.end|| (+w.start||0)+0.3, pos:w.pos||'X', rhyme:(w.rhyme==null?-1:w.rhyme), dir:(w.dir||null)};
+    const wordObj = {text:String(w.text),start:+w.start||0,end:+w.end|| (+w.start||0)+0.3, pos:w.pos||'X', rhyme:(w.rhyme==null?-1:w.rhyme), rhymeNear:!!w.rhyme_near, dir:(w.dir||null)};
     if (w.customX !== undefined && w.customY !== undefined) {
       wordObj.customX = w.customX;
       wordObj.customY = w.customY;
@@ -895,6 +939,7 @@ function embBuild(li){
     let cls='ew'+(emph===0?' fn':'');
     if(d&&d.register==='script') cls+=' script'; else if(d&&d.register==='heavy') cls+=' heavy';
     if(d&&d.glow) cls+=' glow';
+    if(d&&d.hit) cls+=' hit';           // the one charged word in the line, in the song's accent
     const el=document.createElement('span'); el.className=cls; el.textContent=w.text;
     embodyLayer.appendChild(el); return {wi, el, sung:false, placed:false, rot:0, emS:[0.66,0.92,1.16,1.34][emph]}; });
   spans.forEach(s=>{ s.w=s.el.offsetWidth||40; s.h=s.el.offsetHeight||28; });

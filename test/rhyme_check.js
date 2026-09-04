@@ -15,11 +15,11 @@ function grabConst(name){
   const end=html.indexOf('\nfunction ',i);
   return html.slice(i, html.indexOf(';\n',i)>0 && html.indexOf(';\n',i)<end ? html.indexOf(';\n',i)+1 : end);
 }
-const src=[grabConst('VOWNAME'),grabConst('CODA_RULES'),grabConst('IRREG'),
-           grab('clean'),grab('phon'),grab('codaClass'),grab('rhymeParts')].join('\n');
+const src=[grabConst('VOWNAME'),grabConst('CODA_RULES'),grabConst('IRREG'),grabConst('LONGEN'),
+           grab('clean'),grab('phon'),grab('codaClass'),grab('syllables'),grab('rhymeParts')].join('\n');
 const rhymeParts=new Function(src+'\nreturn rhymeParts;')();
 
-const key=w=>rhymeParts(w).key, vow=w=>rhymeParts(w).vowel;
+const key=w=>rhymeParts(w).key, vow=w=>rhymeParts(w).vowel, key2=w=>rhymeParts(w).key2;
 
 // true rhymes share the full rime
 assert.strictEqual(key('bucks'), key('sucks'));
@@ -33,5 +33,16 @@ assert.notStrictEqual(key('run'), key('bucks'));
 
 // but they still share a vowel, which is what drives the softer shade
 assert.strictEqual(vow('bucks'), vow('fuck'));
+
+// multisyllabic: two-syllable rime must match on the multi, not just the shared "-ated" tail
+assert.strictEqual(key2('escalated'), key2('medicated'));
+assert.strictEqual(key2('season'), key2('reason'));
+assert.strictEqual(key2('later'), key2('traitor'));  // open syllable: LAY-ter / TRAY-tor
+assert.notStrictEqual(key2('later'), key2('paper')); // LAY-ter vs PAY-per: assonance, not a multi
+
+// multi-word tail chains rhyme as a unit: "seasonal reason" / "even a demon"
+const tail=ws=>ws.map(key).join('|');
+assert.strictEqual(tail(['a','reason']), tail(['a','season']));
+assert.notStrictEqual(tail(['a','reason']), tail(['a','river']));
 
 console.log('rhyme_check ok');

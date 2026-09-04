@@ -19,20 +19,51 @@ def _provider() -> str:
             return v
     return "none"
 
+# The engine's fixed rendering vocabulary. The Director may ONLY speak in these terms —
+# anything else is dropped at ingest, which is how emoji/no-op directions used to slip through.
+LAYOUTS = ["row", "split", "ascend", "fall", "stack", "spiral", "path", "cage", "cagebars"]
+MOTIFS = ["ring", "heart", "staff", "card", "moon", "boot", "car", "figure",
+          "bars", "ladder", "coin", "ring_split"]
+
 CONCEPT_SYS = """You are Lyrisee's visual Director. Invent this song's visual world from scratch.
 Process: (1) surface reading (2) dual readings / entendres (3) the Unsaid — the unresolved question/confession.
-Then derive palette, fonts, motif_lexicon (only from THIS song's imagery), motion, restraint, construct_bias,
-visual_priority (usually emphasize_unsaid), gap_strategy.
-Output ONLY JSON:
-{\"palette\":{\"bg\":\"#000\",\"ink\":\"#EDEAE4\",\"accents\":[\"#C41E3A\"]},\"fonts\":{\"display\":\"Anton\",\"accent\":\"Archivo Black\"},
-\"motifs\":{},\"motion\":\"...\",\"restraint\":0.7,\"mood\":\"...\",\"construct_bias\":[\"embodiment\"],
-\"dual_readings\":{\"surface\":\"...\",\"undercurrent\":\"...\",\"unsaid\":\"...\"},
-\"visual_priority\":\"emphasize_unsaid\",\"gap_strategy\":\"negative_space\"}"""
+Then derive palette, fonts, motion, restraint, mood, construct_bias, visual_priority, gap_strategy.
 
-DIRECTION_SYS = """Line-level Art Director. For each line: primary, secondary, gap (unsaid),
-emphasis_target (spoken|gap|both), visual_action (build_form|semantic_motion|isolate|withhold|embody|clean),
-form, motion_verb, gap_treatment, register, hierarchy.
-Prefer gap when the unsaid is stronger. Output ONLY a JSON array of direction objects."""
+HOUSE STYLE — non-negotiable: type IS the object. Objects are DRAWN as stroke line-art, never pictographs.
+NEVER output emoji, Unicode symbols, or icon names outside the motif list. The stage is typography +
+line geometry only (the reference language: a tire drawn as a ring with text arcing around it, an ace
+falling as a stroked card, a figure drawn inside the letterforms).
+
+motifs maps your own imagery words to the engine's drawn shapes, e.g. {"wheel":"ring","promise":"heart"}.
+Allowed motif values ONLY: """ + ", ".join(MOTIFS) + """
+
+Output ONLY JSON:
+{"palette":{"bg":"#000","ink":"#EDEAE4","accents":["#C41E3A"]},"fonts":{"display":"Anton","accent":"Archivo Black"},
+"motifs":{},"motion":"...","restraint":0.7,"mood":"...","construct_bias":["embodiment"],
+"dual_readings":{"surface":"...","undercurrent":"...","unsaid":"..."},
+"visual_priority":"emphasize_unsaid","gap_strategy":"negative_space"}"""
+
+DIRECTION_SYS = """Line-level Art Director for a kinetic typography engine. You choose how each line
+ARRANGES ITSELF as type, and which drawn line-art object sits behind it. No emoji, no icon glyphs —
+only the vocabularies below. Read the line for its double meaning: direct the entendre, not the nouns.
+
+layout (how the words physically arrange — the line's meaning as form) ONLY one of:
+""" + ", ".join(LAYOUTS) + """
+  row=neutral · split=two opposed halves · ascend=climbing · fall=dropping · stack=building
+  spiral=circling/obsessive · path=a journey across · cage=words box themselves in · cagebars=words stand as bars
+
+motif (drawn stroke object behind the type; omit when the line earns nothing) ONLY one of:
+""" + ", ".join(MOTIFS) + """
+
+Per line return:
+{"line_index":0,"layout":"cage","motif":"bars","on":"<the word that reveals the motif>",
+ "hit":"<the single charged word, rendered in the accent colour>",
+ "emphasis":["<words that carry weight>"],"script":["<words said softly/intimately>"],
+ "glow":["<words that should burn>"],"rotate":{"<word>":90},
+ "surface":"...","undercurrent":"...","gap":"<the unsaid>"}
+
+Rules: at most one hit per line. Leave motif out unless the line has a real image.
+Every word you name must appear verbatim in that line. Output ONLY a JSON array."""
 
 REPAIR_SYS = """Repair Whisper transcription lightly. Keep timings. Return JSON {\"words\":[{\"text\":\"...\",\"start\":0,\"end\":0}]}."""
 
@@ -137,6 +168,65 @@ def _build_lines_simple(words, gap=0.55, max_words=10):
             cur = []
     return lines
 
+def _norm(t):
+    return re.sub(r"[^a-z']", "", (t or "").lower())
+
+def _clean_concept(c):
+    """Strip anything the stage can't draw — an emoji in motifs used to render as a literal turd."""
+    if not isinstance(c, dict):
+        return c
+    motifs = c.get("motifs")
+    if isinstance(motifs, dict):
+        c["motifs"] = {k: v for k, v in motifs.items() if v in MOTIFS}
+    else:
+        c["motifs"] = {}
+    return c
+
+def _apply_direction(words, line, d, metaphors, scenes):
+    """Turn one Director line-direction into: a layout cue, a drawn scene, and per-word art-direction.
+    Everything is keyed by line START TIME because that is what the engine matches on."""
+    idx = line["idx"]
+    start = line["start"]
+    layout = d.get("layout") or d.get("metaphor")
+    if layout not in LAYOUTS:
+        layout = None
+    motif = d.get("motif") if d.get("motif") in MOTIFS else None
+
+    if layout:
+        metaphors.append({"start": start, "metaphor": layout, "line": line["text"],
+                          "gap": d.get("gap"), "undercurrent": d.get("undercurrent")})
+
+    rotate = {k: v for k, v in (d.get("rotate") or {}).items()
+              if isinstance(v, (int, float))} if isinstance(d.get("rotate"), dict) else {}
+    if motif or rotate:
+        scenes.append({"start": start, "metaphor": layout or "row", "motif": motif,
+                       "on": d.get("on") or "", "rotate": rotate, "breakAt": 0.7,
+                       "figure": "figure" if layout in ("cage", "cagebars") else None})
+
+    def names(key):
+        v = d.get(key)
+        return {_norm(x) for x in v if isinstance(x, str)} if isinstance(v, list) else set()
+
+    emph, script, glow = names("emphasis"), names("script"), names("glow")
+    hit = _norm(d.get("hit")) if isinstance(d.get("hit"), str) else None
+    for wi in idx:
+        w = words[wi]
+        n = _norm(w.get("text", ""))
+        if not n:
+            continue
+        dirn = w.get("dir") or {}
+        if n in emph:
+            dirn["emphasis"] = 3
+        if n in script:
+            dirn["register"] = "script"
+        if n in glow:
+            dirn["glow"] = True
+        if hit and n == hit:
+            dirn["hit"] = True
+            dirn.setdefault("emphasis", 3)
+        if dirn:
+            w["dir"] = dirn
+
 def concept(lyrics, extra=""):
     user = f"Full lyrics:\n\n{lyrics}\n\n"
     if extra:
@@ -185,23 +275,24 @@ def enrich(words):
     except Exception as e:
         print(f"[ai] concept failed ({e})")
         concept_obj = None
-    directions, metaphors = [], []
+    directions, metaphors, scenes = [], [], []
     if concept_obj and lines:
         try:
             for start in range(0, len(lines), 18):
                 chunk = lines[start:start + 18]
                 for d in direct(chunk, concept_obj):
-                    if "line_index" in d:
-                        d["line_index"] = start + int(d["line_index"])
+                    li = start + int(d.get("line_index", 0) or 0)
+                    if not 0 <= li < len(lines):
+                        continue
+                    d["line_index"] = li
                     directions.append(d)
-                    metaphors.append({"line": chunk[d.get("line_index", 0) - start]["text"] if chunk else "",
-                                      "action": d.get("visual_action"), "form": d.get("form"),
-                                      "emphasis": d.get("emphasis_target"), "gap": d.get("gap")})
-            print(f"[ai] directed {len(directions)} lines")
+                    _apply_direction(words, lines[li], d, metaphors, scenes)
+            print(f"[ai] directed {len(directions)} lines -> "
+                  f"{len(metaphors)} layout cues, {len(scenes)} drawn scenes")
         except Exception as e:
             print(f"[ai] direction failed ({e})")
-    return {"words": words, "concept": concept_obj, "metaphors": metaphors,
-            "directions": directions, "rhyme_families": None}
+    return {"words": words, "concept": _clean_concept(concept_obj), "metaphors": metaphors,
+            "scenes": scenes, "directions": directions, "rhyme_families": None}
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:

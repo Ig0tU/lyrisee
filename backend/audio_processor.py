@@ -187,7 +187,7 @@ def main():
     tag_pos(words)
 
     # --- Lyrisee AI stage: context lyric repair + rhyme + word-art art-direction (CORE app logic) ---
-    ai_metaphors = ai_rhymes = None
+    ai_metaphors = ai_rhymes = ai_concept = ai_scenes = None
     if not args.no_ai:
         try:
             import lyrisee_ai
@@ -197,6 +197,8 @@ def main():
                 tag_pos(words)                       # re-tag POS on the corrected words
                 ai_metaphors = enriched.get("metaphors")
                 ai_rhymes = enriched.get("rhyme_families")
+                ai_concept = enriched.get("concept")
+                ai_scenes = enriched.get("scenes")
                 print(f"[ai] repaired + art-directed -> {len(words)} words, "
                       f"{len(ai_metaphors or [])} line cues, {len(ai_rhymes or [])} rhyme families")
             else:
@@ -225,6 +227,8 @@ def main():
 
     out = {"words": words, "beats": beats}
     if ai_metaphors: out["metaphors"] = ai_metaphors
+    if ai_concept: out["concept"] = ai_concept       # palette/fonts/motifs — the song's own world
+    if ai_scenes: out["scenes"] = ai_scenes          # drawn line-art cues per line
     if ai_rhymes: out["rhyme_families"] = ai_rhymes
     if rhyme_pal: out["rhyme_palette"] = rhyme_pal
 

@@ -36,31 +36,57 @@ def _heur_vowel(word):
             return {"A":"AE","E":"EH","I":"IH","O":"AA","U":"AH","Y":"AY"}.get(up, up)
     return None
 
-def _key_for(word):
-    """Rhyme key = assonance signature (stressed vowel[s] of the rhyming part)."""
+# coda -> manner class, mirroring the engine's codaClass(): bucks/sucks group, bucks/fuck don't.
+_CODA = {"P":"P","B":"P","T":"T","D":"T","K":"K","G":"K","F":"F","V":"F","S":"S","Z":"S",
+         "SH":"X","ZH":"X","CH":"X","JH":"X","TH":"H","DH":"H","M":"N","N":"N","NG":"N",
+         "L":"L","R":"R","ER":"R","W":"","Y":"","HH":""}
+
+def _rime_for(word):
+    """(exact_key, vowel) — exact = last vowel + coda class (true rhyme); vowel alone = near."""
     try:
         import pronouncing
         w = re.sub(r"[^a-z']", "", word.lower())
         ph = pronouncing.phones_for_word(w)
         if ph:
-            part = pronouncing.rhyming_part(ph[0])          # from last stressed vowel
-            vowels = [p[:-1] for p in part.split() if p[-1:].isdigit()]  # strip stress digit
+            part = pronouncing.rhyming_part(ph[0]).split()   # from last stressed vowel
+            vowels = [p[:-1] for p in part if p[-1:].isdigit()]
             if vowels:
-                return "·".join(vowels[:2])                  # nucleus (+ next vowel for multis)
+                # coda = consonants after the LAST vowel in the rhyming part
+                last_v = max(i for i, p in enumerate(part) if p[-1:].isdigit())
+                coda = "".join(_CODA.get(p, "") for p in part[last_v + 1:])
+                multi = "·".join(vowels[:2])                 # nucleus (+ next vowel for multis)
+                return f"{multi}:{coda}", vowels[-1]
     except Exception:
         pass
     v = _heur_vowel(word)
-    return v
+    return (f"{v}:", v) if v else (None, None)
+
+def _key_for(word):
+    return _rime_for(word)[0]
+
+def have_cmudict():
+    try:
+        import pronouncing  # noqa: F401
+        return True
+    except Exception:
+        return False
 
 def analyze(words, min_family=2):
     """Return (per_word_group_ids, palette, families) for a list of word dicts."""
+    if not have_cmudict():
+        # Without CMUdict the spelling heuristic collapses the whole song into a handful of
+        # vowel blobs — worse than nothing, because it overrides the browser's rime engine.
+        print("[rhyme] pronouncing (CMUdict) not installed — deferring to the in-engine rime "
+              "detector. `pip install pronouncing` for phoneme-exact families.")
+        return [-1] * len(words), [], []
     FN = {"the","a","an","of","to","in","on","at","for","and","or","but","is","it","i",
           "you","he","she","we","they","my","your","his","her","its","our","their","be"}
-    keys = []
+    keys, vowels = [], []
     for w in words:
         t = re.sub(r"[^a-z']", "", w["text"].lower())
-        keys.append(None if (not t or t in FN) else _key_for(w["text"]))
-    # group
+        k, v = (None, None) if (not t or t in FN) else _rime_for(w["text"])
+        keys.append(k); vowels.append(v)
+    # group on the exact rime (true rhyme)
     by_key = {}
     for i, k in enumerate(keys):
         if k: by_key.setdefault(k, []).append(i)
@@ -69,10 +95,20 @@ def analyze(words, min_family=2):
     fam_keys.sort(key=lambda k: min(by_key[k]))
     group_of = [-1] * len(words)
     families = []
+    vowel_fam = {}
     for fi, k in enumerate(fam_keys):
         for i in by_key[k]:
             group_of[i] = fi
         families.append([words[i]["text"] for i in by_key[k]])
+        vowel_fam.setdefault(k.split(":")[0].split("·")[-1], fi)
+    # near-rhyme: same vowel, different coda -> same family, flagged so the engine shades it softer
+    for i, v in enumerate(vowels):
+        if group_of[i] >= 0 or not v:
+            continue
+        fi = vowel_fam.get(v)
+        if fi is not None:
+            group_of[i] = fi
+            words[i]["rhyme_near"] = True
     palette = [PALETTE[i % len(PALETTE)] for i in range(len(fam_keys))]
     return group_of, palette, families
 

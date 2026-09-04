@@ -27,7 +27,23 @@ def serve_index_or_health():
 
 @app.get("/health")
 def health():
-    return {"status": "ok"}
+    """Reports whether the two stages that silently no-op are actually wired:
+    the Director (needs a provider key) and CMUdict rhymes (needs `pronouncing`)."""
+    try:
+        import lyrisee_ai
+        director, provider = lyrisee_ai.have_llm(), lyrisee_ai._provider()
+    except Exception as e:
+        director, provider = False, f"error: {e}"
+    try:
+        import rhyme_engine
+        cmudict = rhyme_engine.have_cmudict()
+    except Exception:
+        cmudict = False
+    model = os.environ.get({"ollama": "OLLAMA_MODEL", "gemini": "GEMINI_MODEL",
+                            "openai": "OPENAI_MODEL", "anthropic": "ANTHROPIC_MODEL"}
+                           .get(provider, ""), "") or None
+    return {"status": "ok", "director": director, "provider": provider, "model": model,
+            "cmudict": cmudict}
 
 @app.post("/process")
 async def process_media(

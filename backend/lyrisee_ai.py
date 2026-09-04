@@ -111,33 +111,62 @@ def _call_anthropic(system, user, temperature):
     with urllib.request.urlopen(req, timeout=120) as r:
         return json.loads(r.read())["content"][0]["text"]
 
-def _call_ollama(system, user, temperature):
-    """Ollama Cloud ONLY — https://ollama.com/api/chat + OLLAMA_API_KEY."""
-    import urllib.error, urllib.request
-    key = (os.environ.get("OLLAMA_API_KEY") or "").strip()
-    if not key:
-        raise RuntimeError("Ollama Cloud requires OLLAMA_API_KEY from https://ollama.com/settings/keys")
-    model = os.environ.get("OLLAMA_MODEL", "deepseek-v3")
+# Ollama Cloud models to fall through when the configured one is gated (HTTP 402) or
+# doesn't exist (404). Ordered smallest-first so a free-tier key lands on something.
+OLLAMA_FALLBACKS = ["gpt-oss:20b", "gpt-oss:120b", "qwen3-coder:480b-cloud",
+                    "deepseek-v3.1:671b", "kimi-k2:1t-cloud"]
+_OLLAMA_MODEL_OK = None      # first model that answered this process; reused for the rest of the run
+
+def _ollama_base():
     base = (os.environ.get("OLLAMA_HOST") or "https://ollama.com").rstrip("/")
-    if any(x in base for x in ("localhost", "127.0.0.1", ":11434")):
-        base = "https://ollama.com"
-    url = f"{base}/api/chat"
-    body = {"model": model, "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}],
+    return "https://ollama.com" if any(x in base for x in ("localhost", "127.0.0.1", ":11434")) else base
+
+def _ollama_once(model, key, system, user, temperature, timeout=180):
+    import urllib.error, urllib.request
+    body = {"model": model, "messages": [{"role": "system", "content": system},
+                                         {"role": "user", "content": user}],
             "stream": False, "options": {"temperature": temperature}}
-    req = urllib.request.Request(url, data=json.dumps(body).encode(),
+    req = urllib.request.Request(f"{_ollama_base()}/api/chat", data=json.dumps(body).encode(),
         headers={"Content-Type": "application/json", "Authorization": f"Bearer {key}"}, method="POST")
     try:
-        with urllib.request.urlopen(req, timeout=180) as r:
+        with urllib.request.urlopen(req, timeout=timeout) as r:
             data = json.loads(r.read())
     except urllib.error.HTTPError as e:
-        raise RuntimeError(f"Ollama Cloud HTTP {e.code}: {e.read().decode(errors='replace')[:400]}") from e
+        detail = e.read().decode(errors="replace")[:300]
+        raise RuntimeError(f"HTTP {e.code}: {detail}") from e
     except urllib.error.URLError as e:
-        raise RuntimeError(f"Ollama Cloud unreachable: {e.reason}") from e
+        raise RuntimeError(f"unreachable: {e.reason}") from e
     if "message" in data:
         return data["message"].get("content", "")
     if "choices" in data:
         return data["choices"][0]["message"]["content"]
-    raise RuntimeError(f"Unexpected Ollama response: {list(data)[:6]}")
+    raise RuntimeError(f"unexpected response: {list(data)[:6]}")
+
+def _call_ollama(system, user, temperature):
+    """Ollama Cloud ONLY — https://ollama.com/api/chat + OLLAMA_API_KEY.
+    A gated model (402) is a config problem, not a dead end: try the next one and say so."""
+    global _OLLAMA_MODEL_OK
+    key = (os.environ.get("OLLAMA_API_KEY") or "").strip()
+    if not key:
+        raise RuntimeError("Ollama Cloud requires OLLAMA_API_KEY from https://ollama.com/settings/keys")
+    configured = os.environ.get("OLLAMA_MODEL", "gpt-oss:120b")
+    order = [_OLLAMA_MODEL_OK] if _OLLAMA_MODEL_OK else [configured] + [
+        m for m in OLLAMA_FALLBACKS if m != configured]
+    last = None
+    for model in order:
+        try:
+            out = _ollama_once(model, key, system, user, temperature)
+            if model != _OLLAMA_MODEL_OK:
+                if model != configured:
+                    print(f"[ai] '{configured}' unavailable on this key — using '{model}' instead")
+                _OLLAMA_MODEL_OK = model
+            return out
+        except RuntimeError as e:
+            last = e
+            if not re.match(r"HTTP (402|403|404)", str(e)):
+                raise                      # a real failure (500, timeout) — don't burn the list
+            print(f"[ai] ollama model '{model}' unavailable ({str(e)[:80]}); trying next")
+    raise RuntimeError(f"Ollama Cloud: no available model for this key. Last error — {last}")
 
 def _parse_json(text: str) -> Any:
     text = text.strip()

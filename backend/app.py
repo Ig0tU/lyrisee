@@ -26,7 +26,7 @@ def serve_index_or_health():
     return {"status": "ok", "message": "Lyrisee Backend API is running."}
 
 @app.get("/health")
-def health():
+def health(probe: int = 0):
     """Reports whether the two stages that silently no-op are actually wired:
     the Director (needs a provider key) and CMUdict rhymes (needs `pronouncing`)."""
     try:
@@ -42,8 +42,17 @@ def health():
     model = os.environ.get({"ollama": "OLLAMA_MODEL", "gemini": "GEMINI_MODEL",
                             "openai": "OPENAI_MODEL", "anthropic": "ANTHROPIC_MODEL"}
                            .get(provider, ""), "") or None
-    return {"status": "ok", "director": director, "provider": provider, "model": model,
-            "cmudict": cmudict}
+    out = {"status": "ok", "director": director, "provider": provider, "model": model,
+           "cmudict": cmudict}
+    if probe and director:
+        # a key being present proved nothing when the model turned out to be paywalled (402)
+        try:
+            reply = lyrisee_ai._call_llm("Reply with the single word: ok", "ping", 0.0)
+            out["probe"] = {"ok": True, "model_used": getattr(lyrisee_ai, "_OLLAMA_MODEL_OK", None) or model,
+                            "reply": (reply or "")[:80]}
+        except Exception as e:
+            out["probe"] = {"ok": False, "error": str(e)[:300]}
+    return out
 
 @app.post("/process")
 async def process_media(

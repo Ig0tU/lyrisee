@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SVG → Vivus Pro</title>
+<script src="https://unpkg.com/vivus@0.4.6/dist/vivus.min.js"></script>
+<style>
+:root{--bg:#0a0a10;--surface:#12121a;--surface2:#1a1a26;--border:#2e2e42;--text:#e8edf5;--muted:#6b7a90;--accent:#6c63ff;--accent2:#a78bfa}
+*{box-sizing:border-box;margin:0;padding:0}body{font-family:system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column}
+header{padding:12px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;background:var(--surface)}
+header h1{font-size:15px;font-weight:650}.badge{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;font-size:10px;padding:2px 9px;border-radius:20px;font-weight:700}
+.layout{display:grid;grid-template-columns:320px 1fr;flex:1;overflow:hidden}
+.sidebar{border-right:1px solid var(--border);padding:16px;overflow-y:auto;background:var(--surface);display:flex;flex-direction:column;gap:14px}
+.section{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:6px}
+.drop{border:2px dashed var(--border);border-radius:10px;padding:18px;text-align:center;cursor:pointer;background:var(--surface2)}
+.drop:hover,.drop.over{border-color:var(--accent);background:rgba(108,99,255,.08)}
+label.browse{display:inline-block;margin-top:10px;padding:6px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:12px}
+textarea{width:100%;min-height:90px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:10px;font-family:ui-monospace,monospace;font-size:11px}
+.field{display:flex;flex-direction:column;gap:4px;margin-bottom:8px}label{font-size:11px;color:var(--muted)}
+input[type=number],input[type=color],select{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:7px;color:var(--text);padding:7px 9px;font-size:12px}
+.btn{width:100%;padding:10px;border-radius:8px;border:none;font-weight:650;cursor:pointer;font-size:13px}
+.btn-primary{background:var(--accent);color:#fff}.btn-primary:disabled{opacity:.35}
+.btn-sec{background:var(--surface2);color:var(--text);border:1px solid var(--border);margin-top:6px}
+.content{display:flex;flex-direction:column;overflow:hidden}
+.tabs{display:flex;border-bottom:1px solid var(--border);padding:0 16px;background:var(--surface)}
+.tab{padding:12px 14px;font-size:12px;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent}
+.tab.active{color:var(--text);border-bottom-color:var(--accent)}
+.pane{display:none;padding:16px;flex:1;overflow:auto}.pane.active{display:flex;flex-direction:column;gap:12px}
+.preview{border:1px solid var(--border);border-radius:10px;min-height:280px;display:flex;align-items:center;justify-content:center;background:#0e0e16;padding:20px}
+.preview svg{max-width:100%;max-height:360px}
+.code{background:#07070c;border:1px solid var(--border);border-radius:8px;padding:12px;font-family:ui-monospace,monospace;font-size:11px;overflow:auto;max-height:320px;white-space:pre;color:#94a3b8}
+.alert{padding:10px 12px;border-radius:8px;font-size:12px;background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.25);color:#34d399}
+.empty{color:var(--muted);font-size:13px;text-align:center;padding:24px}
+</style>
+</head>
+<body>
+<header>
+  <h1>SVG → Vivus Pro</h1>
+  <span class="badge">vivus.js</span>
+  <span style="margin-left:auto;font-size:12px;color:var(--muted)">Filled SVG → stroke paths for drawing animation</span>
+</header>
+<div class="layout">
+  <div class="sidebar">
+    <div>
+      <div class="section">Input SVG</div>
+      <div class="drop" id="drop">
+        <p style="font-size:12px;color:var(--muted)">Drop <span style="color:var(--accent)">.svg</span> or browse</p>
+        <label class="browse" for="fileInput">Browse files…</label>
+        <input type="file" id="fileInput" accept=".svg,image/svg+xml,text/xml" style="position:absolute;width:1px;height:1px;opacity:0">
+      </div>
+      <div style="text-align:center;margin:8px 0;font-size:11px;color:var(--muted)">— or paste —</div>
+      <textarea id="svgInput" placeholder="<svg ...>...</svg>"></textarea>
+    </div>
+    <div>
+      <div class="section">Stroke</div>
+      <div class="field"><label>Color</label><input type="color" id="strokeColor" value="#ffffff"></div>
+      <div class="field"><label>Width</label><input type="number" id="strokeWidth" value="2" min="0.5" max="20" step="0.5"></div>
+      <div class="field"><label>Line cap</label>
+        <select id="linecap"><option value="round">Round</option><option value="square">Square</option><option value="butt">Butt</option></select>
+      </div>
+    </div>
+    <div>
+      <div class="section">Animation</div>
+      <div class="field"><label>Duration (ms)</label><input type="number" id="duration" value="2000" min="100" max="10000" step="100"></div>
+      <div class="field"><label>Type</label>
+        <select id="animType"><option value="delayed">Delayed</option><option value="oneByOne">One by one</option><option value="sync">Sync</option></select>
+      </div>
+    </div>
+    <button class="btn btn-primary" id="convertBtn" disabled>Convert for Vivus</button>
+    <button class="btn btn-sec" id="downloadBtn" disabled>Download SVG</button>
+    <button class="btn btn-sec" id="clearBtn">Clear</button>
+  </div>
+  <div class="content">
+    <div class="tabs">
+      <div class="tab active" data-t="orig">Original</div>
+      <div class="tab" data-t="conv">Converted</div>
+      <div class="tab" data-t="live">▶ Vivus Live</div>
+      <div class="tab" data-t="code">Code</div>
+    </div>
+    <div class="pane active" id="pane-orig"><div class="preview" id="origPrev"><div class="empty">Drop or paste an SVG</div></div></div>
+    <div class="pane" id="pane-conv"><div class="empty" id="convEmpty">Convert to see result</div><div id="convWrap" style="display:none;flex-direction:column;gap:12px"><div class="alert" id="convInfo"></div><div class="preview" id="convPrev"></div></div></div>
+    <div class="pane" id="pane-live"><div class="empty" id="liveEmpty">Convert to preview animation</div><div id="liveWrap" style="display:none;flex-direction:column;gap:12px"><div class="preview" id="livePrev"></div><button class="btn btn-sec" id="replayBtn" style="width:auto;align-self:center">↺ Replay</button></div></div>
+    <div class="pane" id="pane-code"><div class="empty" id="codeEmpty">Convert to get code</div><div id="codeWrap" style="display:none"><div class="code" id="outCode"></div></div></div>
+  </div>
+</div>
+<script>
+const $=id=>document.getElementById(id);
+let converted=null,vivus=null;
+
+document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('.pane').forEach(x=>x.classList.remove('active'));
+  t.classList.add('active');
+  $('pane-'+t.dataset.t).classList.add('active');
+});
+
+const drop=$('drop'), fileInput=$('fileInput');
+fileInput.onchange=e=>{if(e.target.files[0])readFile(e.target.files[0])};
+['dragenter','dragover'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('over')}));
+['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove('over')}));
+drop.addEventListener('drop',e=>{const f=e.dataTransfer.files[0];if(f)readFile(f)});
+
+function readFile(file){
+  const r=new FileReader();
+  r.onload=ev=>{const t=ev.target.result;$('svgInput').value=t;loadOrig(t);$('convertBtn').disabled=false};
+  r.readAsText(file);
+}
+$('svgInput').oninput=e=>{const v=e.target.value.trim();if(v.startsWith('<svg')||v.startsWith('<?xml')){loadOrig(v);$('convertBtn').disabled=false}};
+
+function loadOrig(svgText){
+  const box=$('origPrev');
+  const tmp=document.createElement('div');tmp.innerHTML=svgText;
+  const svg=tmp.querySelector('svg');
+  if(!svg){box.innerHTML='<div class="empty" style="color:#f87171">No <svg> found</div>';return}
+  svg.style.maxWidth='100%';svg.style.maxHeight='360px';
+  box.innerHTML='';box.appendChild(svg);
+}
+
+function shapeToPath(el){
+  const tag=el.tagName.toLowerCase();
+  if(tag==='path')return el.getAttribute('d')||'';
+  if(tag==='rect'){
+    const x=+el.getAttribute('x')||0,y=+el.getAttribute('y')||0,w=+el.getAttribute('width')||0,h=+el.getAttribute('height')||0;
+    const rx=+el.getAttribute('rx')||0,ry=+el.getAttribute('ry')||rx;
+    if(rx||ry){const rrx=Math.min(rx,w/2),rry=Math.min(ry,h/2);return `M${x+rrx},${y} H${x+w-rrx} A${rrx},${rry} 0 0 1 ${x+w},${y+rry} V${y+h-rry} A${rrx},${rry} 0 0 1 ${x+w-rrx},${y+h} H${x+rrx} A${rrx},${rry} 0 0 1 ${x},${y+h-rry} V${y+rry} A${rrx},${rry} 0 0 1 ${x+rrx},${y} Z`}
+    return `M${x},${y} H${x+w} V${y+h} H${x} Z`;
+  }
+  if(tag==='circle'){const cx=+el.getAttribute('cx')||0,cy=+el.getAttribute('cy')||0,r=+el.getAttribute('r')||0;return `M${cx-r},${cy} A${r},${r} 0 1 0 ${cx+r},${cy} A${r},${r} 0 1 0 ${cx-r},${cy}`}
+  if(tag==='ellipse'){const cx=+el.getAttribute('cx')||0,cy=+el.getAttribute('cy')||0,rx=+el.getAttribute('rx')||0,ry=+el.getAttribute('ry')||0;return `M${cx-rx},${cy} A${rx},${ry} 0 1 0 ${cx+rx},${cy} A${rx},${ry} 0 1 0 ${cx-rx},${cy}`}
+  if(tag==='line'){const x1=+el.getAttribute('x1')||0,y1=+el.getAttribute('y1')||0,x2=+el.getAttribute('x2')||0,y2=+el.getAttribute('y2')||0;return `M${x1},${y1} L${x2},${y2}`}
+  if(tag==='polyline'||tag==='polygon'){
+    const pts=(el.getAttribute('points')||'').trim().split(/[\s,]+/).map(Number);
+    if(pts.length<2)return '';let d=`M${pts[0]},${pts[1]}`;for(let i=2;i<pts.length;i+=2)d+=` L${pts[i]},${pts[i+1]}`;if(tag==='polygon')d+=' Z';return d;
+  }
+  return '';
+}
+
+function convert(svgText){
+  const color=$('strokeColor').value, width=$('strokeWidth').value, cap=$('linecap').value;
+  const parser=new DOMParser();
+  const doc=parser.parseFromString(svgText,'image/svg+xml');
+  const svg=doc.querySelector('svg');
+  if(!svg)throw new Error('No SVG');
+  if(!svg.getAttribute('id'))svg.setAttribute('id','vivus-svg');
+  svg.removeAttribute('fill');svg.removeAttribute('stroke');
+  [...svg.querySelectorAll('circle,ellipse,rect,line,polyline,polygon')].forEach(el=>{
+    const d=shapeToPath(el);if(!d)return;
+    const p=doc.createElementNS('http://www.w3.org/2000/svg','path');
+    p.setAttribute('d',d);
+    ['id','class','transform','opacity'].forEach(a=>{if(el.hasAttribute(a))p.setAttribute(a,el.getAttribute(a))});
+    el.parentNode.replaceChild(p,el);
+  });
+  const drawables=svg.querySelectorAll('path');
+  drawables.forEach(el=>{
+    el.setAttribute('fill','none');
+    el.setAttribute('stroke',color);
+    el.setAttribute('stroke-width',width);
+    el.setAttribute('stroke-linecap',cap);
+    el.setAttribute('stroke-linejoin','round');
+  });
+  svg.querySelectorAll('defs').forEach(d=>{
+    d.querySelectorAll('linearGradient,radialGradient,pattern,filter').forEach(x=>x.remove());
+    if(!d.children.length)d.remove();
+  });
+  let out=new XMLSerializer().serializeToString(svg);
+  if(!out.includes('xmlns='))out=out.replace('<svg ','<svg xmlns="http://www.w3.org/2000/svg" ');
+  return {svg:out,count:drawables.length};
+}
+
+$('convertBtn').onclick=()=>{
+  try{
+    const {svg,count}=convert($('svgInput').value.trim());
+    converted=svg;
+    $('convEmpty').style.display='none';$('convWrap').style.display='flex';
+    $('convInfo').textContent=`✓ Converted ${count} path(s) → fill=none, stroke=${$('strokeColor').value}, width=${$('strokeWidth').value}`;
+    $('convPrev').innerHTML=svg;
+    const s=$('convPrev').querySelector('svg');if(s){s.style.maxWidth='100%';s.style.maxHeight='360px'}
+    $('downloadBtn').disabled=false;
+    $('codeEmpty').style.display='none';$('codeWrap').style.display='block';
+    $('outCode').textContent=svg;
+    $('liveEmpty').style.display='none';$('liveWrap').style.display='flex';
+    const tmp=document.createElement('div');tmp.innerHTML=svg;
+    const el=tmp.querySelector('svg');
+    const id='vivus-live-'+Date.now();el.id=id;
+    el.style.maxWidth='320px';el.style.maxHeight='320px';
+    $('livePrev').innerHTML='';$('livePrev').appendChild(el);
+    if(vivus)try{vivus.stop()}catch(_){}
+    setTimeout(()=>{
+      const dur=Math.round((+$('duration').value||2000)/10);
+      vivus=new Vivus(id,{type:$('animType').value,duration:dur,animTimingFunction:Vivus.EASE_OUT});
+    },60);
+    document.querySelector('[data-t="live"]').click();
+  }catch(e){alert('Conversion error: '+e.message)}
+};
+
+$('replayBtn').onclick=()=>{if(vivus)vivus.reset().play()};
+$('downloadBtn').onclick=()=>{
+  if(!converted)return;
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([converted],{type:'image/svg+xml'}));
+  a.download='vivus-ready.svg';a.click();
+};
+$('clearBtn').onclick=()=>{
+  $('svgInput').value='';converted=null;
+  $('origPrev').innerHTML='<div class="empty">Drop or paste an SVG</div>';
+  $('convEmpty').style.display='block';$('convWrap').style.display='none';
+  $('liveEmpty').style.display='block';$('liveWrap').style.display='none';
+  $('codeEmpty').style.display='block';$('codeWrap').style.display='none';
+  $('convertBtn').disabled=true;$('downloadBtn').disabled=true;
+  if(vivus)try{vivus.stop()}catch(_){}
+  document.querySelector('[data-t="orig"]').click();
+};
+</script>
+</body>
+</html>

@@ -1,89 +1,900 @@
 <!DOCTYPE html>
-<!-- Full file: use artifacts/lyrisee-vector.html from the Grok session if this commit is incomplete -->
-<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Lyrisee Vector</title>
-<script src="https://unpkg.com/vivus@0.4.6/dist/vivus.min.js"></script>
-<style>
-:root{--bg:#050508;--surface:#0c0c12;--surface2:#14141e;--border:#2a2a3a;--text:#e8e8f0;--muted:#6b6b80;--accent:#c8c8d8;--glow:rgba(255,255,255,.3)}
-*{box-sizing:border-box;margin:0;padding:0}body{background:var(--bg);color:var(--text);font-family:ui-monospace,monospace;min-height:100vh;display:flex;flex-direction:column;overflow:hidden}
-header{display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--border);background:var(--surface)}
-header h1{font-size:13px;font-weight:600;letter-spacing:.05em}.badge{font-size:9px;padding:2px 7px;border:1px solid var(--border);border-radius:20px;color:var(--muted)}.status{margin-left:auto;font-size:11px;color:var(--muted)}
-.main{flex:1;display:grid;grid-template-columns:290px 1fr 310px;overflow:hidden}
-.panel{background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}.panel.right{border-right:none;border-left:1px solid var(--border)}
-.panel-header{padding:10px 12px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);border-bottom:1px solid var(--border)}
-.panel-body{flex:1;overflow-y:auto;padding:10px;display:flex;flex-direction:column;gap:10px}
-.btn{background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:7px 10px;font-family:inherit;font-size:11px;cursor:pointer;border-radius:5px}.btn.primary{background:#1a1a24;border-color:#555}.btn:disabled{opacity:.35}
-.stage-wrap{display:flex;flex-direction:column;background:#000;flex:1;min-height:0}
-#lyric-display{text-align:center;padding:14px 18px 6px;font-size:clamp(12px,1.8vw,17px);letter-spacing:.1em;text-transform:uppercase;color:#c8c8d8;min-height:48px}
-#lyric-display .sub{display:block;font-size:.55em;letter-spacing:.14em;color:var(--muted);margin-top:3px;text-transform:none}
-#stage{flex:1;display:flex;align-items:center;justify-content:center;position:relative;min-height:0}
-#svg-container{width:min(70vw,600px);height:min(52vh,440px);display:flex;align-items:center;justify-content:center}
-#svg-container svg{width:100%;height:100%;stroke:#fff;fill:none;stroke-width:var(--sw,1.7);stroke-linecap:round;stroke-linejoin:round;filter:drop-shadow(0 0 5px var(--glow));transition:opacity .4s}
-#svg-container svg.fading{opacity:0}
-.transport{padding:10px 16px 12px;border-top:1px solid var(--border);background:var(--surface);display:flex;gap:10px;align-items:center}
-.director-card{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:8px 10px;font-size:10px;line-height:1.45;margin-bottom:6px}
-.director-card h4{font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:3px}.director-card .val{color:var(--accent)}
-.cue-item{padding:7px 8px;background:var(--surface2);border:1px solid transparent;border-radius:5px;font-size:10px;cursor:pointer;margin-bottom:3px}.cue-item.active{border-color:#555;background:#1a1a26}
-.hint{font-size:9px;color:var(--muted);line-height:1.4}
-@media(max-width:1000px){.main{grid-template-columns:1fr}.panel{display:none}}
-</style></head><body>
-<header><h1>LYRISEE VECTOR</h1><span class="badge">semantic director</span><span class="badge">calligram</span><span class="status" id="status">Idle</span></header>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lyrisee Vector — Semantic Director + Calligram Strokes</title>
+  <script src="https://unpkg.com/vivus@0.4.6/dist/vivus.min.js"></script>
+  <style>
+    :root {
+      --bg: #050508; --surface: #0c0c12; --surface2: #14141e;
+      --border: #2a2a3a; --text: #e8e8f0; --muted: #6b6b80;
+      --accent: #c8c8d8; --glow: rgba(255,255,255,0.3);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg); color: var(--text);
+      font-family: 'SF Mono', 'Fira Code', 'JetBrains Mono', ui-monospace, monospace;
+      min-height: 100vh; display: flex; flex-direction: column; overflow: hidden;
+    }
+    header {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 16px; border-bottom: 1px solid var(--border);
+      background: var(--surface); flex-shrink: 0;
+    }
+    header h1 { font-size: 13px; font-weight: 600; letter-spacing: 0.05em; }
+    header .badge {
+      font-size: 9px; padding: 2px 7px; border: 1px solid var(--border);
+      border-radius: 20px; color: var(--muted);
+    }
+    header .status { margin-left: auto; font-size: 11px; color: var(--muted); }
+    .main {
+      flex: 1; display: grid; grid-template-columns: 290px 1fr 310px; overflow: hidden;
+    }
+    .panel {
+      background: var(--surface); border-right: 1px solid var(--border);
+      display: flex; flex-direction: column; overflow: hidden;
+    }
+    .panel.right { border-right: none; border-left: 1px solid var(--border); }
+    .panel-header {
+      padding: 10px 12px; font-size: 9px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.12em; color: var(--muted);
+      border-bottom: 1px solid var(--border);
+    }
+    .panel-body {
+      flex: 1; overflow-y: auto; padding: 10px;
+      display: flex; flex-direction: column; gap: 10px;
+    }
+    .field label {
+      display: block; font-size: 9px; color: var(--muted);
+      margin-bottom: 3px; text-transform: uppercase; letter-spacing: 0.06em;
+    }
+    input[type="text"], input[type="number"], textarea, select {
+      width: 100%; background: var(--surface2); border: 1px solid var(--border);
+      color: var(--text); padding: 7px 9px; font-family: inherit;
+      font-size: 11px; border-radius: 5px;
+    }
+    textarea { min-height: 60px; resize: vertical; line-height: 1.4; }
+    input:focus, textarea:focus, select:focus { outline: none; border-color: #555; }
+    .btn {
+      background: var(--surface2); border: 1px solid var(--border); color: var(--text);
+      padding: 7px 10px; font-family: inherit; font-size: 11px; cursor: pointer;
+      border-radius: 5px; transition: background 0.15s, border-color 0.15s;
+    }
+    .btn:hover { background: #1c1c28; border-color: #444; }
+    .btn.primary { background: #1a1a24; border-color: #555; }
+    .btn:disabled { opacity: 0.35; cursor: not-allowed; }
+    .btn-row { display: flex; gap: 5px; }
+    .btn-row .btn { flex: 1; }
+
+    .stage-wrap {
+      display: flex; flex-direction: column; background: #000;
+      position: relative; overflow: hidden;
+    }
+    #lyric-display {
+      text-align: center; padding: 14px 18px 6px;
+      font-size: clamp(12px, 1.8vw, 17px); letter-spacing: 0.1em;
+      text-transform: uppercase; color: #c8c8d8; min-height: 48px; line-height: 1.3;
+    }
+    #lyric-display .sub {
+      display: block; font-size: 0.55em; letter-spacing: 0.14em;
+      color: var(--muted); margin-top: 3px; text-transform: none;
+    }
+    #stage {
+      flex: 1; display: flex; align-items: center; justify-content: center;
+      position: relative; min-height: 0;
+    }
+    #svg-container {
+      width: min(70vw, 600px); height: min(52vh, 440px);
+      display: flex; align-items: center; justify-content: center;
+    }
+    #svg-container svg {
+      width: 100%; height: 100%; max-width: 100%; max-height: 100%;
+      stroke: #fff; fill: none; stroke-width: var(--sw, 1.7);
+      stroke-linecap: round; stroke-linejoin: round;
+      filter: drop-shadow(0 0 5px var(--glow));
+      transition: opacity 0.4s ease;
+    }
+    #svg-container svg.fading { opacity: 0; }
+    #energy-ring {
+      position: absolute; inset: 10%;
+      border: 1px solid rgba(255,255,255,0.05); border-radius: 50%;
+      pointer-events: none; transition: transform 0.05s linear, border-color 0.1s;
+    }
+    .transport {
+      padding: 10px 16px 12px; border-top: 1px solid var(--border);
+      background: var(--surface); display: flex; flex-direction: column; gap: 8px;
+    }
+    .transport-row { display: flex; align-items: center; gap: 10px; }
+    .time {
+      font-size: 10px; color: var(--muted); min-width: 84px;
+      font-variant-numeric: tabular-nums;
+    }
+    .progress-wrap {
+      flex: 1; height: 3px; background: #1a1a24; border-radius: 2px;
+      cursor: pointer; position: relative;
+    }
+    .progress-bar {
+      height: 100%; width: 0%;
+      background: linear-gradient(90deg, #555, #aaa); border-radius: 2px;
+    }
+    .cue-marks { position: absolute; inset: 0; pointer-events: none; }
+    .cue-mark {
+      position: absolute; top: -2px; width: 2px; height: 8px;
+      background: #555; transform: translateX(-50%);
+    }
+    .meter { height: 2px; background: #1a1a24; border-radius: 1px; overflow: hidden; }
+    .meter-fill { height: 100%; width: 0%; background: #777; transition: width 0.05s linear; }
+
+    .cue-list { display: flex; flex-direction: column; gap: 3px; max-height: 190px; overflow-y: auto; }
+    .cue-item {
+      padding: 7px 8px; background: var(--surface2); border: 1px solid transparent;
+      border-radius: 5px; font-size: 10px; cursor: pointer;
+    }
+    .cue-item:hover { border-color: #333; }
+    .cue-item.active { border-color: #555; background: #1a1a26; }
+    .cue-item .t { color: var(--muted); font-size: 9px; }
+    .cue-item .txt { color: var(--text); line-height: 1.25; margin: 2px 0; }
+    .cue-item .meta { color: #777; font-size: 9px; }
+
+    .director-card {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 6px; padding: 8px 10px; font-size: 10px; line-height: 1.45;
+      margin-bottom: 6px;
+    }
+    .director-card h4 {
+      font-size: 9px; text-transform: uppercase; letter-spacing: 0.08em;
+      color: var(--muted); margin-bottom: 3px;
+    }
+    .director-card .val { color: var(--accent); }
+
+    .drop-audio {
+      border: 1px dashed var(--border); border-radius: 6px; padding: 12px;
+      text-align: center; font-size: 10px; color: var(--muted); cursor: pointer;
+    }
+    .drop-audio:hover, .drop-audio.drag { border-color: #555; background: rgba(255,255,255,0.02); }
+    .drop-audio input { display: none; }
+    .hint { font-size: 9px; color: var(--muted); line-height: 1.4; }
+    .divider { border: none; border-top: 1px solid var(--border); margin: 2px 0; }
+    .mode-pills { display: flex; gap: 4px; flex-wrap: wrap; }
+    .mode-pill {
+      font-size: 9px; padding: 4px 8px; border: 1px solid var(--border);
+      border-radius: 20px; color: var(--muted); cursor: pointer;
+    }
+    .mode-pill.active { border-color: #666; color: var(--text); background: #1a1a24; }
+
+    @media (max-width: 1000px) {
+      .main { grid-template-columns: 1fr; }
+      .panel { display: none; }
+    }
+  </style>
+</head>
+<body>
+<header>
+  <h1>LYRISEE VECTOR</h1>
+  <span class="badge">semantic director</span>
+  <span class="badge">calligram strokes</span>
+  <span class="badge">theme continuity</span>
+  <span class="status" id="status">Idle</span>
+</header>
+
 <div class="main">
-<div class="panel"><div class="panel-header">Source</div><div class="panel-body">
-<button class="btn primary" id="btnDemo" style="width:100%">Load semantic demo</button>
-<button class="btn" id="btnPlay" disabled style="width:100%;margin-top:8px">Play</button>
-<button class="btn" id="btnPause" disabled style="width:100%;margin-top:4px">Pause</button>
-<p class="hint" style="margin-top:12px">Pipeline: statement meaning → stanza context → continuous theme → letters shaped as silhouette → Vivus stroke-draw.</p>
-</div></div>
-<div class="stage-wrap">
-<div id="lyric-display">Waiting<span class="sub">load semantic demo</span></div>
-<div id="stage"><div id="svg-container"></div></div>
-<div class="transport"><span id="timeDisplay" style="font-size:10px;color:var(--muted)">0:00</span></div>
+  <div class="panel">
+    <div class="panel-header">Source &amp; Director</div>
+    <div class="panel-body">
+      <div class="drop-audio" id="audioDrop">
+        Drop audio / click
+        <input type="file" id="audioInput" accept="audio/*,video/*">
+      </div>
+      <button class="btn primary" id="btnDemo" style="width:100%">Load semantic demo</button>
+
+      <hr class="divider">
+      <div class="field">
+        <label>Visual mode</label>
+        <div class="mode-pills" id="modePills">
+          <span class="mode-pill active" data-mode="calligram">Calligram</span>
+          <span class="mode-pill" data-mode="silhouette">Silhouette+text</span>
+          <span class="mode-pill" data-mode="motif">Pure motif</span>
+        </div>
+      </div>
+      <div class="field">
+        <label>Draw duration</label>
+        <input type="number" id="drawDuration" value="140" min="40" max="400" step="10">
+      </div>
+      <div class="field">
+        <label>Vivus type</label>
+        <select id="vivusType">
+          <option value="delayed" selected>Delayed</option>
+          <option value="oneByOne">One by one</option>
+          <option value="sync">Sync</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Stroke width</label>
+        <input type="number" id="strokeWidth" value="1.7" min="0.5" max="6" step="0.1">
+      </div>
+      <div class="field">
+        <label>Energy → stroke</label>
+        <input type="range" id="energyBoost" min="0" max="100" value="40">
+      </div>
+      <div class="field">
+        <label>Crossfade ms</label>
+        <input type="number" id="crossfade" value="450" min="0" max="1500" step="50">
+      </div>
+      <hr class="divider">
+      <p class="hint">
+        1. Isolate statement meaning in line/bar context<br>
+        2. Bind to continuous theme of the piece<br>
+        3. Choose visual that keeps textual weight<br>
+        4. Shape letter strokes into the object silhouette
+      </p>
+    </div>
+  </div>
+
+  <div class="stage-wrap">
+    <div id="lyric-display">Waiting<span class="sub">load demo or audio</span></div>
+    <div id="stage">
+      <div id="energy-ring"></div>
+      <div id="svg-container"></div>
+    </div>
+    <div class="transport">
+      <div class="transport-row">
+        <button class="btn primary" id="btnPlay" disabled>Play</button>
+        <button class="btn" id="btnPause" disabled>Pause</button>
+        <button class="btn" id="btnStop" disabled>Stop</button>
+        <span class="time" id="timeDisplay">0:00 / 0:00</span>
+        <div class="progress-wrap" id="progressWrap">
+          <div class="progress-bar" id="progressBar"></div>
+          <div class="cue-marks" id="cueMarks"></div>
+        </div>
+      </div>
+      <div class="meter"><div class="meter-fill" id="energyMeter"></div></div>
+    </div>
+  </div>
+
+  <div class="panel right">
+    <div class="panel-header">Semantic Track</div>
+    <div class="panel-body">
+      <div class="btn-row">
+        <button class="btn" id="btnAddCue">+ Line</button>
+        <button class="btn" id="btnExportCues">Export</button>
+      </div>
+      <div class="cue-list" id="cueList"></div>
+      <hr class="divider">
+      <div class="panel-header" style="padding:0 0 6px;border:none;">Director readout</div>
+      <div id="directorOut">
+        <div class="director-card"><h4>Statement meaning</h4><div class="val" id="dirMeaning">—</div></div>
+        <div class="director-card"><h4>In stanza / bar context</h4><div class="val" id="dirContext">—</div></div>
+        <div class="director-card"><h4>Continuous theme link</h4><div class="val" id="dirTheme">—</div></div>
+        <div class="director-card"><h4>Visual (letters → form)</h4><div class="val" id="dirVisual">—</div></div>
+      </div>
+      <hr class="divider">
+      <div class="field">
+        <label>LLM Director prompt</label>
+        <textarea id="llmPrompt" readonly style="min-height:90px;font-size:9px;"></textarea>
+      </div>
+    </div>
+  </div>
 </div>
-<div class="panel right"><div class="panel-header">Director</div><div class="panel-body">
-<div id="cueList"></div>
-<div class="director-card"><h4>Statement meaning</h4><div class="val" id="dirMeaning">—</div></div>
-<div class="director-card"><h4>Stanza context</h4><div class="val" id="dirContext">—</div></div>
-<div class="director-card"><h4>Theme link</h4><div class="val" id="dirTheme">—</div></div>
-<div class="director-card"><h4>Visual (letters → form)</h4><div class="val" id="dirVisual">—</div></div>
-</div></div>
-</div>
+
 <script>
-const $=id=>document.getElementById(id);
-const PIECE_THEME={core:'organic life meeting digital signal — memory in soil and circuit',arc:['grounding','perception','fracture','transmission','memory','ascent','escape','witness','consumption']};
-const DEMO=[
-{time:0,text:'Roots locked in the underground frost',meaning:'Life fixed, cold, buried; survival as endurance.',context:'Opening: self as plant-matter below surface.',themeLink:'Grounding — organic origin before signal.',visual:'ROOTS/FROST letter strokes as branching roots.',concept:'roots',keyWords:['ROOTS','FROST']},
-{time:4,text:'Eyes track the digital sky',meaning:'Perception turns upward; watching becomes electronic.',context:'Buried self looks at constructed data heaven.',themeLink:'Perception — earth-bound to screen-bound.',visual:'EYES/SKY along almond eye contour.',concept:'eye',keyWords:['EYES','SKY']},
-{time:8,text:'Fractured frequencies collapse into light',meaning:'Broken transmission becomes illumination.',context:'Digital sky unstable; breaking is meaning.',themeLink:'Fracture — organic/digital rupture.',visual:'LIGHT/FRACTURE as prism facets.',concept:'prism',keyWords:['LIGHT','FRACTURE']},
-{time:12.2,text:'Waves of signal fold into silence',meaning:'Information decays into quiet.',context:'Post-fracture calm.',themeLink:'Transmission ending.',visual:'WAVE/SILENCE on undulating paths.',concept:'wave',keyWords:['WAVE','SILENCE']},
-{time:16.5,text:'A circuit remembers the pulse',meaning:'Hardware holds organic rhythm.',context:'Dual memory: frost and silicon.',themeLink:'Memory — soil vs circuit.',visual:'CIRCUIT/PULSE on chip die.',concept:'circuit',keyWords:['CIRCUIT','PULSE']},
-{time:20.8,text:'Mountains rise from static',meaning:'Form emerges from noise.',context:'Elevation after memory.',themeLink:'Ascent — form from residue.',visual:'MOUNTAIN on ridgelines.',concept:'mountain',keyWords:['MOUNTAIN','STATIC']},
-{time:25,text:'Bird cuts the black horizon',meaning:'Living vector breaks the frame.',context:'Escape from the system.',themeLink:'Escape.',visual:'BIRD as wing arcs.',concept:'bird',keyWords:['BIRD','HORIZON']},
-{time:29.2,text:'Moon holds the last frequency',meaning:'Remote body keeps final signal.',context:'Cosmic archive.',themeLink:'Witness.',visual:'MOON crescent from letter strokes.',concept:'moon',keyWords:['MOON','FREQUENCY']},
-{time:33.5,text:'Fire in the void',meaning:'Origin and end as combustion in absence.',context:'Final synthesis.',themeLink:'Consumption.',visual:'FIRE/VOID as flame in circle.',concept:'fire',keyWords:['FIRE','VOID']}
+const $ = id => document.getElementById(id);
+
+/* ── Continuous theme of the piece ─────────────────────── */
+const PIECE_THEME = {
+  core: 'organic life meeting digital signal — memory in both soil and circuit',
+  arc: ['grounding','perception','fracture','transmission','memory','ascent','escape','witness','consumption']
+};
+
+/* ── Semantic demo (pre-directed) ──────────────────────── */
+const DEMO_CUES = [
+  {
+    time: 0.0,
+    text: "Roots locked in the underground frost",
+    meaning: "Life is fixed, cold, buried; survival is passive endurance.",
+    context: "Opening image: the self as plant-matter trapped below the surface.",
+    themeLink: "Grounding — organic origin before any digital signal appears.",
+    visual: "Letter strokes of ROOTS / FROST form a branching root system under a ground line.",
+    concept: "roots",
+    keyWords: ["ROOTS", "FROST"]
+  },
+  {
+    time: 4.0,
+    text: "Eyes track the digital sky",
+    meaning: "Perception turns upward; watching becomes electronic.",
+    context: "The buried self now looks at a constructed heaven of data.",
+    themeLink: "Perception — theme moves from earth-bound to screen-bound seeing.",
+    visual: "Letters of EYES / SKY placed along an almond eye contour with a glyph pupil.",
+    concept: "eye",
+    keyWords: ["EYES", "SKY"]
+  },
+  {
+    time: 8.0,
+    text: "Fractured frequencies collapse into light",
+    meaning: "Broken transmission becomes illumination; failure is revelatory.",
+    context: "The digital sky is unstable; its breaking is the source of meaning.",
+    themeLink: "Fracture — organic/digital tension reaches visible rupture.",
+    visual: "LIGHT and FRAGMENTS as facets of a prism; letter paths as crystalline edges.",
+    concept: "prism",
+    keyWords: ["LIGHT", "FRACTURE"]
+  },
+  {
+    time: 12.2,
+    text: "Waves of signal fold into silence",
+    meaning: "Information decays into quiet; the medium returns to stillness.",
+    context: "Post-fracture calm between noise and void.",
+    themeLink: "Transmission ending — wave as last carrier of earlier signal.",
+    visual: "WAVE / SILENCE letters riding undulating baseline paths.",
+    concept: "wave",
+    keyWords: ["WAVE", "SILENCE"]
+  },
+  {
+    time: 16.5,
+    text: "A circuit remembers the pulse",
+    meaning: "Hardware holds organic rhythm; the body is archived as voltage.",
+    context: "Dual memory: frost-roots and silicon pulse.",
+    themeLink: "Memory — what is stored in soil vs stored in circuit.",
+    visual: "CIRCUIT / PULSE as traces on a chip die with node circles.",
+    concept: "circuit",
+    keyWords: ["CIRCUIT", "PULSE"]
+  },
+  {
+    time: 20.8,
+    text: "Mountains rise from static",
+    meaning: "Form emerges from noise; landscape generated by interference.",
+    context: "After memory, elevation — theme climbs out of pure signal.",
+    themeLink: "Ascent — organic form born from digital residue.",
+    visual: "MOUNTAIN letters stepped on rising ridgelines; STATIC as ground.",
+    concept: "mountain",
+    keyWords: ["MOUNTAIN", "STATIC"]
+  },
+  {
+    time: 25.0,
+    text: "Bird cuts the black horizon",
+    meaning: "A living vector breaks the boundary of the composed world.",
+    context: "Escape clause: life refuses to stay inside the system.",
+    themeLink: "Escape — continuous arc opens a path out of circuit and frost.",
+    visual: "BIRD letterforms as wing arcs crossing a horizon of glyphs.",
+    concept: "bird",
+    keyWords: ["BIRD", "HORIZON"]
+  },
+  {
+    time: 29.2,
+    text: "Moon holds the last frequency",
+    meaning: "A cold remote body preserves the final signal.",
+    context: "Theme becomes cosmic archive; the eye's sky is now lunar.",
+    themeLink: "Witness — observation returns at planetary scale.",
+    visual: "MOON crescent from letter strokes; FREQUENCY as orbital arcs.",
+    concept: "moon",
+    keyWords: ["MOON", "FREQUENCY"]
+  },
+  {
+    time: 33.5,
+    text: "Fire in the void",
+    meaning: "Consumption and origin collapse into one burning absence.",
+    context: "Final synthesis: frost, signal, and light become combustion in emptiness.",
+    themeLink: "Consumption — theme resolves as energy that destroys and illuminates.",
+    visual: "FIRE / VOID letters rising as flame tongues inside a circular void.",
+    concept: "fire",
+    keyWords: ["FIRE", "VOID"]
+  }
 ];
-const GLYPHS={A:['M1 14 L5 1 L9 14','M3 9 H7'],B:['M2 1 V13','M2 1 H6 Q9 1 9 4 Q9 7 6 7 H2','M2 7 H6.5 Q9 7 9 10 Q9 13 6.5 13 H2'],C:['M9 3 Q6.5 1 4 1 Q1 1 1 7 Q1 13 4 13 Q6.5 13 9 11'],D:['M2 1 V13','M2 1 H5.5 Q9 1 9 7 Q9 13 5.5 13 H2'],E:['M8 1 H2 V13 H8','M2 7 H6'],F:['M8 1 H2 V13','M2 7 H6'],G:['M9 3 Q6.5 1 4 1 Q1 1 1 7 Q1 13 4 13 Q7 13 9 11 V8 H6'],H:['M2 1 V13','M8 1 V13','M2 7 H8'],I:['M3 1 H7','M5 1 V13','M3 13 H7'],J:['M6 1 H9 V10 Q9 13 5 13 Q2 13 2 10'],K:['M2 1 V13','M8 1 L2 7 L8 13'],L:['M2 1 V13 H8'],M:['M1 13 V1 L5 8 L9 1 V13'],N:['M2 13 V1 L8 13 V1'],O:['M5 1 Q1 1 1 7 Q1 13 5 13 Q9 13 9 7 Q9 1 5 1'],P:['M2 13 V1 H6 Q9 1 9 4.5 Q9 8 6 8 H2'],Q:['M5 1 Q1 1 1 7 Q1 13 5 13 Q9 13 9 7 Q9 1 5 1','M6 10 L9 14'],R:['M2 13 V1 H6 Q9 1 9 4.5 Q9 8 6 8 H2','M5 8 L9 13'],S:['M8.5 3 Q6.5 1 4 1 Q1.5 1 1.5 4 Q1.5 7 5 7 Q8.5 7 8.5 10.5 Q8.5 13 5 13 Q2.5 13 1.5 11'],T:['M1 1 H9','M5 1 V13'],U:['M2 1 V10 Q2 13 5 13 Q8 13 8 10 V1'],V:['M1 1 L5 13 L9 1'],W:['M0.5 1 L2.5 13 L5 5 L7.5 13 L9.5 1'],X:['M1 1 L9 13','M9 1 L1 13'],Y:['M1 1 L5 7 L9 1','M5 7 V13'],Z:['M1 1 H9 L1 13 H9'],' ':[]};
-function letterPaths(ch,ox,oy,scale){const g=GLYPHS[ch.toUpperCase()];if(!g)return[];return g.map(d=>{let out='',tokens=d.match(/[MLHVQ]|-?[\d.]+/g)||[],i=0,cmd='',pair=0;while(i<tokens.length){const t=tokens[i];if(/[MLHVQ]/.test(t)){cmd=t;out+=t;pair=0;i++;continue}const n=parseFloat(t);if(cmd==='H')out+=(ox+n*scale).toFixed(1);else if(cmd==='V')out+=(oy+n*scale).toFixed(1);else{out+=(pair%2===0?ox+n*scale:oy+n*scale).toFixed(1);pair++}out+=' ';i++}return out.trim()})}
-function pathsFromWord(word,x,y,scale){const paths=[];let cx=x;for(const ch of word){paths.push(...letterPaths(ch,cx,y,scale));cx+=(ch===' '?4:10)*scale*1.05}return paths}
-function wrapSvg(ds){return `<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">${ds.map(d=>`<path d="${d}"/>`).join('')}</svg>`}
-function buildCalligram(concept,keys){const w0=(keys&&keys[0])||'FORM',w1=(keys&&keys[1])||'',paths=[];
-if(concept==='roots'){paths.push('M20 160 Q100 150 180 160',...pathsFromWord(w0,68,68,1.05),'M100 95 L55 55','M100 110 L40 80','M100 125 L50 150','M100 95 L150 50','M100 115 L165 85','M100 130 L155 145');if(w1)paths.push(...pathsFromWord(w1,28,38,.65))}
-else if(concept==='eye'){paths.push('M15 100 Q100 30 185 100 Q100 170 15 100 Z','M100 78 A22 22 0 1 1 99.9 78','M100 90 A8 8 0 1 1 99.9 90',...pathsFromWord(w0,55,52,.8));if(w1)paths.push(...pathsFromWord(w1,68,125,.65));paths.push('M100 20 L100 40','M100 160 L100 180','M20 100 L40 100','M160 100 L180 100')}
-else if(concept==='prism'){paths.push('M100 25 L170 80 L145 170 L55 170 L30 80 Z','M100 25 L100 115','M100 115 L170 80','M100 115 L145 170','M100 115 L55 170','M100 115 L30 80',...pathsFromWord(w0,62,95,.7));if(w1)paths.push(...pathsFromWord(w1,38,40,.5))}
-else if(concept==='wave'){paths.push('M10 80 Q40 30 70 80 T130 80 T190 80','M10 110 Q40 60 70 110 T130 110 T190 110','M10 140 Q40 90 70 140 T130 140 T190 140',...pathsFromWord(w0,48,52,.85));if(w1)paths.push(...pathsFromWord(w1,42,155,.6))}
-else if(concept==='circuit'){paths.push('M70 70 H130 V130 H70 Z','M100 30 V70','M100 130 V170','M30 100 H70','M130 100 H170','M100 30 A5 5 0 1 1 99.9 30','M100 170 A5 5 0 1 1 99.9 170','M30 100 A5 5 0 1 1 29.9 100','M170 100 A5 5 0 1 1 169.9 100',...pathsFromWord(w0,48,95,.5));if(w1)paths.push(...pathsFromWord(w1,55,145,.5))}
-else if(concept==='mountain'){paths.push('M15 165 L55 70 L90 120 L130 45 L185 165 Z','M55 70 L70 95','M130 45 L145 80',...pathsFromWord(w0,32,140,.5));if(w1)paths.push(...pathsFromWord(w1,55,28,.5))}
-else if(concept==='bird'){paths.push('M30 105 Q100 40 170 105','M30 105 Q100 85 170 105','M100 80 V125 L85 150','M100 125 L115 150','M100 72 A4 4 0 1 1 99.9 72',...pathsFromWord(w0,70,52,.7));if(w1)paths.push(...pathsFromWord(w1,52,160,.5))}
-else if(concept==='moon'){paths.push('M125 35 A65 65 0 1 0 125 165 A48 48 0 1 1 125 35',...pathsFromWord(w0,38,90,.75));if(w1)paths.push(...pathsFromWord(w1,32,160,.45))}
-else if(concept==='fire'){paths.push('M100 170 C55 145 50 95 85 60 C70 95 90 105 100 75 C110 105 130 95 115 60 C150 95 145 145 100 170 Z','M100 170 C80 150 78 120 95 100 C90 120 100 125 100 110 C100 125 110 120 105 100 C122 120 120 150 100 170 Z',...pathsFromWord(w0,72,125,.65));if(w1)paths.push(...pathsFromWord(w1,75,38,.55))}
-else{paths.push('M100 30 A70 70 0 1 1 99.9 30','M100 60 A40 40 0 1 1 99.9 60',...pathsFromWord(w0,70,95,.8))}
-return wrapSvg(paths)}
-let cues=[],idx=-1,vivus=null,playing=false,startOff=0,t0=0,raf=null;
-function showDir(c){$('dirMeaning').textContent=c.meaning||'—';$('dirContext').textContent=c.context||'—';$('dirTheme').textContent=c.themeLink||'—';$('dirVisual').textContent=c.visual||'—'}
-function renderList(){const list=$('cueList');list.innerHTML='';cues.forEach((c,i)=>{const d=document.createElement('div');d.className='cue-item'+(i===idx?' active':'');d.innerHTML=`<div style="color:var(--muted);font-size:9px">${c.time}s · ${c.concept}</div><div>${c.text}</div>`;d.onclick=()=>{idx=i;renderCue(c);renderList()};list.appendChild(d)})}
-function renderCue(c){showDir(c);$('lyric-display').innerHTML=c.text+`<span class="sub">${c.concept} · calligram</span>`;const html=buildCalligram(c.concept,c.keyWords);const tmp=document.createElement('div');tmp.innerHTML=html;const svg=tmp.querySelector('svg');const id='v'+Date.now();svg.id=id;svg.querySelectorAll('path').forEach(p=>{p.setAttribute('fill','none');p.setAttribute('stroke','#fff');p.setAttribute('stroke-linecap','round')});const box=$('svg-container');const prev=box.querySelector('svg');if(prev)prev.classList.add('fading');setTimeout(()=>{box.innerHTML=svg.outerHTML;if(vivus)try{vivus.stop()}catch(e){}try{vivus=new Vivus(id,{type:'delayed',duration:140,animTimingFunction:Vivus.EASE_OUT,start:'autostart'})}catch(e){console.warn(e)}},300)}
-function tick(){const t=playing?startOff+(performance.now()-t0)/1000:startOff;$('timeDisplay').textContent=Math.floor(t/60)+':'+String(Math.floor(t%60)).padStart(2,'0');let next=-1;for(let i=0;i<cues.length;i++)if(t>=cues[i].time)next=i;if(next!==-1&&next!==idx){idx=next;renderCue(cues[idx]);renderList()}if(playing){if(t>cues[cues.length-1].time+5){playing=false;$('status').textContent='Complete';$('btnPlay').disabled=false}else raf=requestAnimationFrame(tick)}}
-$('btnDemo').onclick=()=>{cues=DEMO.map(c=>({...c}));idx=-1;startOff=0;renderList();$('btnPlay').disabled=false;$('status').textContent='Demo loaded';$('lyric-display').innerHTML='Semantic demo ready<span class="sub">meaning → theme → letters as silhouette</span>'};
-$('btnPlay').onclick=()=>{if(!cues.length)return;playing=true;t0=performance.now();if(idx<0){idx=0;renderCue(cues[0])}else startOff=cues[idx].time;$('btnPlay').disabled=true;$('btnPause').disabled=false;$('status').textContent='Playing';raf=requestAnimationFrame(tick)};
-$('btnPause').onclick=()=>{playing=false;startOff=startOff+(performance.now()-t0)/1000;if(raf)cancelAnimationFrame(raf);$('btnPlay').disabled=false;$('btnPause').disabled=true;$('status').textContent='Paused'};
-$('status').textContent='Ready — load semantic demo';
-</script></body></html>
+
+/* ── Single-stroke capital glyphs (em box ~10×14) ──────── */
+const GLYPHS = {
+  A: ['M1 14 L5 1 L9 14','M3 9 H7'],
+  B: ['M2 1 V13','M2 1 H6 Q9 1 9 4 Q9 7 6 7 H2','M2 7 H6.5 Q9 7 9 10 Q9 13 6.5 13 H2'],
+  C: ['M9 3 Q6.5 1 4 1 Q1 1 1 7 Q1 13 4 13 Q6.5 13 9 11'],
+  D: ['M2 1 V13','M2 1 H5.5 Q9 1 9 7 Q9 13 5.5 13 H2'],
+  E: ['M8 1 H2 V13 H8','M2 7 H6'],
+  F: ['M8 1 H2 V13','M2 7 H6'],
+  G: ['M9 3 Q6.5 1 4 1 Q1 1 1 7 Q1 13 4 13 Q7 13 9 11 V8 H6'],
+  H: ['M2 1 V13','M8 1 V13','M2 7 H8'],
+  I: ['M3 1 H7','M5 1 V13','M3 13 H7'],
+  J: ['M6 1 H9 V10 Q9 13 5 13 Q2 13 2 10'],
+  K: ['M2 1 V13','M8 1 L2 7 L8 13'],
+  L: ['M2 1 V13 H8'],
+  M: ['M1 13 V1 L5 8 L9 1 V13'],
+  N: ['M2 13 V1 L8 13 V1'],
+  O: ['M5 1 Q1 1 1 7 Q1 13 5 13 Q9 13 9 7 Q9 1 5 1'],
+  P: ['M2 13 V1 H6 Q9 1 9 4.5 Q9 8 6 8 H2'],
+  Q: ['M5 1 Q1 1 1 7 Q1 13 5 13 Q9 13 9 7 Q9 1 5 1','M6 10 L9 14'],
+  R: ['M2 13 V1 H6 Q9 1 9 4.5 Q9 8 6 8 H2','M5 8 L9 13'],
+  S: ['M8.5 3 Q6.5 1 4 1 Q1.5 1 1.5 4 Q1.5 7 5 7 Q8.5 7 8.5 10.5 Q8.5 13 5 13 Q2.5 13 1.5 11'],
+  T: ['M1 1 H9','M5 1 V13'],
+  U: ['M2 1 V10 Q2 13 5 13 Q8 13 8 10 V1'],
+  V: ['M1 1 L5 13 L9 1'],
+  W: ['M0.5 1 L2.5 13 L5 5 L7.5 13 L9.5 1'],
+  X: ['M1 1 L9 13','M9 1 L1 13'],
+  Y: ['M1 1 L5 7 L9 1','M5 7 V13'],
+  Z: ['M1 1 H9 L1 13 H9'],
+  ' ': []
+};
+
+function letterPaths(ch, ox, oy, scale) {
+  const g = GLYPHS[ch.toUpperCase()];
+  if (!g || !g.length) return [];
+  return g.map(d => {
+    let out = '';
+    const tokens = d.match(/[MLHVQ]|-?[\d.]+/g) || [];
+    let i = 0, cmd = '', pair = 0;
+    while (i < tokens.length) {
+      const t = tokens[i];
+      if (/[MLHVQ]/.test(t)) { cmd = t; out += t; pair = 0; i++; continue; }
+      const n = parseFloat(t);
+      if (cmd === 'H') out += (ox + n * scale).toFixed(1);
+      else if (cmd === 'V') out += (oy + n * scale).toFixed(1);
+      else {
+        out += (pair % 2 === 0 ? ox + n * scale : oy + n * scale).toFixed(1);
+        pair++;
+      }
+      out += ' ';
+      i++;
+    }
+    return out.trim();
+  });
+}
+
+function pathsFromWord(word, x, y, scale, tracking) {
+  const paths = [];
+  let cx = x;
+  const tr = tracking || 1.05;
+  for (const ch of word) {
+    paths.push(...letterPaths(ch, cx, y, scale));
+    cx += (ch === ' ' ? 4 : 10) * scale * tr;
+  }
+  return paths;
+}
+
+function extractWords(text) {
+  return (text || '').toUpperCase().replace(/[^A-Z\s]/g, '').trim().split(/\s+/).filter(Boolean).slice(0, 4);
+}
+
+function wrapSvg(pathDs) {
+  const body = pathDs.map(d => `<path d="${d}"/>`).join('\n  ');
+  return `<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">\n  ${body}\n</svg>`;
+}
+
+/* ── Calligrams: letters form the silhouette ───────────── */
+function buildCalligram(concept, keyWords) {
+  const words = (keyWords && keyWords.length) ? keyWords : ['FORM'];
+  const paths = [];
+  const w0 = words[0] || 'FORM';
+  const w1 = words[1] || '';
+
+  if (concept === 'roots') {
+    paths.push('M20 160 Q100 150 180 160');
+    paths.push(...pathsFromWord(w0, 68, 68, 1.05, 0.9));
+    paths.push('M100 95 L55 55','M100 110 L40 80','M100 125 L50 150');
+    paths.push('M100 95 L150 50','M100 115 L165 85','M100 130 L155 145');
+    if (w1) paths.push(...pathsFromWord(w1, 28, 38, 0.65, 0.85));
+  } else if (concept === 'eye') {
+    paths.push('M15 100 Q100 30 185 100 Q100 170 15 100 Z');
+    paths.push('M100 78 A22 22 0 1 1 99.9 78');
+    paths.push('M100 90 A8 8 0 1 1 99.9 90');
+    paths.push(...pathsFromWord(w0, 55, 52, 0.8, 0.9));
+    if (w1) paths.push(...pathsFromWord(w1, 68, 125, 0.65, 0.9));
+    paths.push('M100 20 L100 40','M100 160 L100 180','M20 100 L40 100','M160 100 L180 100');
+  } else if (concept === 'prism') {
+    paths.push('M100 25 L170 80 L145 170 L55 170 L30 80 Z');
+    paths.push('M100 25 L100 115','M100 115 L170 80','M100 115 L145 170','M100 115 L55 170','M100 115 L30 80');
+    paths.push(...pathsFromWord(w0, 62, 95, 0.7, 0.88));
+    if (w1) paths.push(...pathsFromWord(w1, 38, 40, 0.5, 0.85));
+  } else if (concept === 'wave') {
+    paths.push('M10 80 Q40 30 70 80 T130 80 T190 80');
+    paths.push('M10 110 Q40 60 70 110 T130 110 T190 110');
+    paths.push('M10 140 Q40 90 70 140 T130 140 T190 140');
+    paths.push(...pathsFromWord(w0, 48, 52, 0.85, 0.95));
+    if (w1) paths.push(...pathsFromWord(w1, 42, 155, 0.6, 0.9));
+  } else if (concept === 'circuit') {
+    paths.push('M70 70 H130 V130 H70 Z');
+    paths.push('M100 30 V70','M100 130 V170','M30 100 H70','M130 100 H170');
+    paths.push('M100 30 A5 5 0 1 1 99.9 30','M100 170 A5 5 0 1 1 99.9 170');
+    paths.push('M30 100 A5 5 0 1 1 29.9 100','M170 100 A5 5 0 1 1 169.9 100');
+    paths.push(...pathsFromWord(w0, 48, 95, 0.5, 0.82));
+    if (w1) paths.push(...pathsFromWord(w1, 55, 145, 0.5, 0.85));
+  } else if (concept === 'mountain') {
+    paths.push('M15 165 L55 70 L90 120 L130 45 L185 165 Z');
+    paths.push('M55 70 L70 95','M130 45 L145 80');
+    paths.push(...pathsFromWord(w0, 32, 140, 0.5, 0.8));
+    if (w1) paths.push(...pathsFromWord(w1, 55, 28, 0.5, 0.85));
+  } else if (concept === 'bird') {
+    paths.push('M30 105 Q100 40 170 105');
+    paths.push('M30 105 Q100 85 170 105');
+    paths.push('M100 80 V125 L85 150','M100 125 L115 150');
+    paths.push('M100 72 A4 4 0 1 1 99.9 72');
+    paths.push(...pathsFromWord(w0, 70, 52, 0.7, 0.9));
+    if (w1) paths.push(...pathsFromWord(w1, 52, 160, 0.5, 0.85));
+  } else if (concept === 'moon') {
+    paths.push('M125 35 A65 65 0 1 0 125 165 A48 48 0 1 1 125 35');
+    paths.push(...pathsFromWord(w0, 38, 90, 0.75, 0.9));
+    if (w1) paths.push(...pathsFromWord(w1, 32, 160, 0.45, 0.85));
+  } else if (concept === 'fire') {
+    paths.push('M100 170 C55 145 50 95 85 60 C70 95 90 105 100 75 C110 105 130 95 115 60 C150 95 145 145 100 170 Z');
+    paths.push('M100 170 C80 150 78 120 95 100 C90 120 100 125 100 110 C100 125 110 120 105 100 C122 120 120 150 100 170 Z');
+    paths.push(...pathsFromWord(w0, 72, 125, 0.65, 0.88));
+    if (w1) paths.push(...pathsFromWord(w1, 75, 38, 0.55, 0.85));
+  } else {
+    paths.push('M100 30 A70 70 0 1 1 99.9 30');
+    paths.push('M100 60 A40 40 0 1 1 99.9 60');
+    paths.push(...pathsFromWord(w0, 70, 95, 0.8, 0.9));
+  }
+  return wrapSvg(paths);
+}
+
+function buildSilhouette(concept, keyWords, lineText) {
+  const basePaths = [];
+  // Reuse calligram structure then add baseline text
+  const tmp = document.createElement('div');
+  tmp.innerHTML = buildCalligram(concept, keyWords);
+  const svg = tmp.querySelector('svg');
+  const words = extractWords(lineText).slice(0, 3);
+  let x = 18;
+  words.forEach(w => {
+    letterPaths; // keep ref
+    const ps = pathsFromWord(w, x, 185, 0.42, 0.8);
+    ps.forEach(d => {
+      const p = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      p.setAttribute('d', d);
+      svg.appendChild(p);
+    });
+    x += w.length * 5.2 + 8;
+  });
+  return svg.outerHTML;
+}
+
+/* ── Director ──────────────────────────────────────────── */
+function pickConcept(text) {
+  const lower = (text || '').toLowerCase();
+  const map = [
+    [['root','frost','underground','soil','grow'], 'roots'],
+    [['eye','see','look','watch','sky','vision'], 'eye'],
+    [['light','fracture','prism','collapse','crystal'], 'prism'],
+    [['wave','signal','frequency','ocean','silence'], 'wave'],
+    [['circuit','pulse','code','wire','digital'], 'circuit'],
+    [['mountain','rise','peak','static','climb'], 'mountain'],
+    [['bird','fly','wing','horizon','cut'], 'bird'],
+    [['moon','lunar','night','hold'], 'moon'],
+    [['fire','burn','flame','void','consume'], 'fire']
+  ];
+  for (const [keys, c] of map) if (keys.some(k => lower.includes(k))) return c;
+  return 'void';
+}
+
+function runDirector(cue, index) {
+  if (cue.meaning && cue.themeLink && cue.visual) return cue;
+  const concept = cue.concept || pickConcept(cue.text);
+  const keyWords = cue.keyWords || extractWords(cue.text).slice(0, 2);
+  const arc = PIECE_THEME.arc[index % PIECE_THEME.arc.length];
+  return {
+    ...cue,
+    concept,
+    keyWords,
+    meaning: cue.meaning || `Symbolic weight of “${concept}” as the line’s core image.`,
+    context: cue.context || `Line ${index + 1} in the unfolding bar/stanza.`,
+    themeLink: cue.themeLink || `${arc} — binds to: “${PIECE_THEME.core}”.`,
+    visual: cue.visual || `Letters of ${keyWords.join(' / ')} shaped into a ${concept} silhouette.`
+  };
+}
+
+/* ── State ─────────────────────────────────────────────── */
+let cues = [];
+let currentCueIndex = -1;
+let vivusInstance = null;
+let audioCtx = null, analyser = null, audioSource = null, audioElement = null;
+let isPlaying = false, startOffset = 0, demoMode = false, demoStartPerf = 0, rafId = null;
+let visualMode = 'calligram';
+
+document.querySelectorAll('.mode-pill').forEach(p => {
+  p.addEventListener('click', () => {
+    document.querySelectorAll('.mode-pill').forEach(x => x.classList.remove('active'));
+    p.classList.add('active');
+    visualMode = p.dataset.mode;
+    if (currentCueIndex >= 0 && cues[currentCueIndex]) renderCue(cues[currentCueIndex], true);
+  });
+});
+
+$('llmPrompt').value = `You are the Semantic Visual Director for a monochrome stroke lyric visualizer.
+
+Given LINE, STANZA context, and PIECE_THEME:
+1) STATE_MEANING — one sentence: what the statement means locally
+2) CONTEXT_ROLE — one sentence: role inside the bar/stanza
+3) THEME_LINK — one sentence: how it advances the continuous theme
+4) VISUAL — object silhouette that can be formed FROM THE LETTERS of key words
+5) KEY_WORDS — 1–3 words from the line to shape into that silhouette
+
+Return JSON only.`;
+
+function setStatus(m) { $('status').textContent = m; }
+function formatTime(sec) {
+  if (!isFinite(sec)) return '0:00';
+  return Math.floor(sec/60) + ':' + String(Math.floor(sec%60)).padStart(2,'0');
+}
+function escapeHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function showDirector(cue) {
+  $('dirMeaning').textContent = cue.meaning || '—';
+  $('dirContext').textContent = cue.context || '—';
+  $('dirTheme').textContent = cue.themeLink || '—';
+  $('dirVisual').textContent = cue.visual || '—';
+}
+
+function renderCueList() {
+  const list = $('cueList');
+  list.innerHTML = '';
+  cues.forEach((c, i) => {
+    const div = document.createElement('div');
+    div.className = 'cue-item' + (i === currentCueIndex ? ' active' : '');
+    div.innerHTML = `<div class="t">${formatTime(c.time)} · ${c.concept||''}</div>
+      <div class="txt">${escapeHtml(c.text)}</div>
+      <div class="meta">${escapeHtml((c.themeLink||'').slice(0,55))}…</div>`;
+    div.addEventListener('click', () => {
+      currentCueIndex = i;
+      renderCue(cues[i], true);
+      renderCueList();
+    });
+    list.appendChild(div);
+  });
+  renderCueMarks();
+}
+
+function renderCueMarks() {
+  const wrap = $('cueMarks');
+  wrap.innerHTML = '';
+  const dur = getDuration();
+  if (!dur || !cues.length) return;
+  cues.forEach(c => {
+    const m = document.createElement('div');
+    m.className = 'cue-mark';
+    m.style.left = (Math.min(1, c.time / dur) * 100) + '%';
+    wrap.appendChild(m);
+  });
+}
+
+function buildSvgForCue(cue) {
+  const concept = cue.concept || 'void';
+  const keys = cue.keyWords || extractWords(cue.text);
+  if (visualMode === 'calligram') return buildCalligram(concept, keys);
+  if (visualMode === 'silhouette') return buildSilhouette(concept, keys, cue.text);
+  return buildCalligram(concept, []); // pure structure
+}
+
+function ensureVivusReady(svgString) {
+  const tmp = document.createElement('div');
+  tmp.innerHTML = svgString;
+  const svg = tmp.querySelector('svg');
+  if (!svg) return { html: svgString, id: 'x' };
+  svg.querySelectorAll('path,circle,ellipse,rect,line,polyline,polygon').forEach(el => {
+    el.setAttribute('fill', 'none');
+    if (!el.getAttribute('stroke')) el.setAttribute('stroke', '#ffffff');
+    el.setAttribute('stroke-linecap', 'round');
+    el.setAttribute('stroke-linejoin', 'round');
+  });
+  const id = 'vivus-' + Date.now() + '-' + Math.floor(Math.random()*9999);
+  svg.id = id;
+  return { html: svg.outerHTML, id };
+}
+
+function renderCue(cue) {
+  if (!cue) return;
+  const directed = runDirector(cue, currentCueIndex < 0 ? 0 : currentCueIndex);
+  Object.assign(cue, directed);
+  showDirector(cue);
+
+  $('lyric-display').innerHTML = escapeHtml(cue.text) +
+    `<span class="sub">${cue.concept || ''} · ${visualMode}</span>`;
+
+  const { html, id } = ensureVivusReady(buildSvgForCue(cue));
+  const container = $('svg-container');
+  const fadeMs = parseInt($('crossfade').value, 10) || 400;
+  const prev = container.querySelector('svg');
+  if (prev) prev.classList.add('fading');
+
+  setTimeout(() => {
+    container.innerHTML = html;
+    document.documentElement.style.setProperty('--sw', parseFloat($('strokeWidth').value) || 1.7);
+    if (vivusInstance) { try { vivusInstance.stop(); } catch(_){} vivusInstance = null; }
+    try {
+      vivusInstance = new Vivus(id, {
+        type: $('vivusType').value || 'delayed',
+        duration: parseInt($('drawDuration').value, 10) || 140,
+        animTimingFunction: Vivus.EASE_OUT,
+        start: 'autostart'
+      });
+    } catch (err) { console.warn(err); setStatus('Vivus error'); }
+  }, prev ? fadeMs * 0.55 : 0);
+}
+
+function getEnergy() {
+  if (!analyser) return 0;
+  const data = new Uint8Array(analyser.frequencyBinCount);
+  analyser.getByteFrequencyData(data);
+  let sum = 0; const n = Math.min(48, data.length);
+  for (let i = 0; i < n; i++) sum += data[i];
+  return Math.min(1, (sum / n) / 180);
+}
+
+function setupAudioGraph(el) {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioSource) try { audioSource.disconnect(); } catch(_){}
+  audioSource = audioCtx.createMediaElementSource(el);
+  analyser = audioCtx.createAnalyser();
+  analyser.fftSize = 256;
+  analyser.smoothingTimeConstant = 0.75;
+  audioSource.connect(analyser);
+  analyser.connect(audioCtx.destination);
+}
+
+function getDuration() {
+  if (demoMode) return cues.length ? cues[cues.length-1].time + 5 : 40;
+  if (audioElement && isFinite(audioElement.duration)) return audioElement.duration;
+  return 0;
+}
+function getCurrentTime() {
+  if (demoMode) return isPlaying ? startOffset + (performance.now()-demoStartPerf)/1000 : startOffset;
+  return audioElement ? audioElement.currentTime : 0;
+}
+
+function tick() {
+  const t = getCurrentTime(), dur = getDuration();
+  $('timeDisplay').textContent = formatTime(t) + ' / ' + formatTime(dur);
+  $('progressBar').style.width = (dur ? Math.min(100,(t/dur)*100) : 0) + '%';
+  const energy = getEnergy();
+  $('energyMeter').style.width = (energy*100) + '%';
+  const ring = $('energy-ring');
+  ring.style.transform = `scale(${1+energy*0.07})`;
+  ring.style.borderColor = `rgba(255,255,255,${0.05+energy*0.18})`;
+  if (isPlaying) {
+    const boost = parseInt($('energyBoost').value,10)/100;
+    const sw = (parseFloat($('strokeWidth').value)||1.7)*(1+energy*boost);
+    document.documentElement.style.setProperty('--sw', sw.toFixed(2));
+  }
+  if (isPlaying && cues.length) {
+    let next = -1;
+    for (let i=0;i<cues.length;i++) if (t >= cues[i].time) next = i;
+    if (next !== -1 && next !== currentCueIndex) {
+      currentCueIndex = next;
+      renderCue(cues[currentCueIndex]);
+      renderCueList();
+    }
+  }
+  if (isPlaying) {
+    if (demoMode && t >= getDuration()) { stopAll(); setStatus('Demo complete'); }
+    else rafId = requestAnimationFrame(tick);
+  }
+}
+
+function play() {
+  if (!cues.length) { setStatus('Load demo first'); return; }
+  if (demoMode) {
+    isPlaying = true; demoStartPerf = performance.now();
+    if (currentCueIndex < 0) { currentCueIndex = 0; renderCue(cues[0]); }
+    setStatus('Playing · semantic demo');
+    $('btnPlay').disabled = true; $('btnPause').disabled = false; $('btnStop').disabled = false;
+    rafId = requestAnimationFrame(tick);
+    return;
+  }
+  if (!audioElement) { setStatus('Load audio'); return; }
+  if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+  audioElement.play().then(() => {
+    isPlaying = true; setStatus('Playing');
+    $('btnPlay').disabled = true; $('btnPause').disabled = false; $('btnStop').disabled = false;
+    if (currentCueIndex < 0) { currentCueIndex = 0; renderCue(cues[0]); }
+    rafId = requestAnimationFrame(tick);
+  }).catch(e => setStatus('Play blocked: '+e.message));
+}
+
+function pause() {
+  isPlaying = false;
+  if (demoMode) startOffset = getCurrentTime();
+  else if (audioElement) audioElement.pause();
+  if (rafId) cancelAnimationFrame(rafId);
+  $('btnPlay').disabled = false; $('btnPause').disabled = true;
+  setStatus('Paused');
+}
+
+function stopAll() {
+  isPlaying = false;
+  if (rafId) cancelAnimationFrame(rafId);
+  if (demoMode) { startOffset = 0; demoStartPerf = 0; }
+  else if (audioElement) { audioElement.pause(); audioElement.currentTime = 0; }
+  currentCueIndex = -1;
+  $('btnPlay').disabled = false; $('btnPause').disabled = true; $('btnStop').disabled = true;
+  $('progressBar').style.width = '0%';
+  $('timeDisplay').textContent = '0:00 / ' + formatTime(getDuration());
+  setStatus(demoMode ? 'Demo ready' : 'Stopped');
+  renderCueList();
+}
+
+$('btnDemo').addEventListener('click', () => {
+  demoMode = true; audioElement = null;
+  cues = DEMO_CUES.map(c => ({...c}));
+  currentCueIndex = -1; startOffset = 0;
+  renderCueList();
+  showDirector({ meaning:'—', context:'—', themeLink: PIECE_THEME.core, visual:'—' });
+  $('btnPlay').disabled = false; $('btnStop').disabled = false;
+  setStatus('Semantic demo loaded');
+  $('lyric-display').innerHTML = 'Semantic demo ready<span class="sub">meaning → theme → letters as silhouette</span>';
+});
+
+const audioDrop = $('audioDrop'), audioInput = $('audioInput');
+audioDrop.addEventListener('click', () => audioInput.click());
+audioDrop.addEventListener('dragover', e => { e.preventDefault(); audioDrop.classList.add('drag'); });
+audioDrop.addEventListener('dragleave', () => audioDrop.classList.remove('drag'));
+audioDrop.addEventListener('drop', e => {
+  e.preventDefault(); audioDrop.classList.remove('drag');
+  if (e.dataTransfer.files[0]) loadAudioFile(e.dataTransfer.files[0]);
+});
+audioInput.addEventListener('change', e => { if (e.target.files[0]) loadAudioFile(e.target.files[0]); });
+
+function loadAudioFile(file) {
+  demoMode = false;
+  const url = URL.createObjectURL(file);
+  if (audioElement) { audioElement.pause(); audioElement.src = ''; }
+  audioElement = new Audio();
+  audioElement.src = url;
+  audioElement.crossOrigin = 'anonymous';
+  audioElement.addEventListener('loadedmetadata', () => {
+    setupAudioGraph(audioElement);
+    $('btnPlay').disabled = false; $('btnStop').disabled = false;
+    setStatus('Audio: ' + file.name);
+    $('timeDisplay').textContent = '0:00 / ' + formatTime(audioElement.duration);
+    if (!cues.length) {
+      cues = [{ time:0, text:'Add directed lines timed to this track', concept:'void' }];
+      renderCueList();
+    } else renderCueMarks();
+  });
+  audioElement.addEventListener('ended', stopAll);
+  audioElement.load();
+}
+
+$('btnPlay').addEventListener('click', play);
+$('btnPause').addEventListener('click', pause);
+$('btnStop').addEventListener('click', stopAll);
+
+$('progressWrap').addEventListener('click', e => {
+  const dur = getDuration(); if (!dur) return;
+  const rect = e.currentTarget.getBoundingClientRect();
+  const ratio = Math.max(0, Math.min(1, (e.clientX-rect.left)/rect.width));
+  const t = ratio * dur;
+  if (demoMode) { startOffset = t; if (isPlaying) demoStartPerf = performance.now(); }
+  else if (audioElement) audioElement.currentTime = t;
+  let next = -1;
+  for (let i=0;i<cues.length;i++) if (t >= cues[i].time) next = i;
+  if (next >= 0 && next !== currentCueIndex) {
+    currentCueIndex = next; renderCue(cues[next]); renderCueList();
+  }
+  $('progressBar').style.width = (ratio*100)+'%';
+  $('timeDisplay').textContent = formatTime(t)+' / '+formatTime(dur);
+});
+
+$('btnAddCue').addEventListener('click', () => {
+  const t = getCurrentTime() || (cues.length ? cues[cues.length-1].time+3 : 0);
+  const text = prompt('Lyric line:','');
+  if (text == null || !text.trim()) return;
+  const directed = runDirector({ time: Math.round(t*10)/10, text, concept: pickConcept(text) }, cues.length);
+  cues.push(directed);
+  cues.sort((a,b) => a.time - b.time);
+  renderCueList();
+  setStatus('Line added — Director applied');
+});
+
+$('btnExportCues').addEventListener('click', () => {
+  const blob = new Blob([JSON.stringify({ theme: PIECE_THEME, cues }, null, 2)], { type:'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'lyrisee-vector-semantic.json';
+  a.click();
+});
+
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+  if (e.code === 'Space') { e.preventDefault(); isPlaying ? pause() : play(); }
+});
+
+setStatus('Ready — load semantic demo');
+</script>
+</body>
+</html>

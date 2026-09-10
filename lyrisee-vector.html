@@ -1,1 +1,323 @@
-PLACEHOLDER
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lyrisee Vector</title>
+<script src="https://unpkg.com/vivus@0.4.6/dist/vivus.min.js"></script>
+<style>
+:root{--bg:#050508;--surface:#0c0c12;--border:#2a2a3a;--text:#e8e8f0;--muted:#6b6b80;--accent:#c8c8d8}
+*{box-sizing:border-box;margin:0;padding:0}body{background:var(--bg);color:var(--text);font-family:ui-monospace,monospace;min-height:100vh;display:flex;flex-direction:column}
+header{display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--border);background:var(--surface)}
+h1{font-size:13px}.badge{font-size:9px;padding:2px 7px;border:1px solid var(--border);border-radius:20px;color:var(--muted)}.status{margin-left:auto;font-size:11px;color:var(--muted)}
+.main{flex:1;display:grid;grid-template-columns:280px 1fr 280px;overflow:hidden}
+.panel{background:var(--surface);border-right:1px solid var(--border);padding:12px;overflow:auto}.panel.right{border-right:none;border-left:1px solid var(--border)}
+.drop{border:1px dashed var(--border);border-radius:8px;padding:16px;text-align:center;font-size:11px;color:var(--muted);cursor:pointer;margin-bottom:10px}
+.drop.drag{border-color:#666;background:rgba(255,255,255,.03)}
+.btn{background:#14141e;border:1px solid var(--border);color:var(--text);padding:8px 10px;font:inherit;font-size:11px;cursor:pointer;border-radius:5px;width:100%;margin-top:6px}
+.btn.primary{border-color:#666;font-weight:600}.btn:disabled{opacity:.35}
+.stage{display:flex;flex-direction:column;background:#000}
+#lyric{text-align:center;padding:14px;font-size:16px;letter-spacing:.1em;text-transform:uppercase;min-height:48px}
+#lyric .sub{display:block;font-size:10px;color:var(--muted);margin-top:4px;text-transform:none}
+#stage{flex:1;display:flex;align-items:center;justify-content:center}
+#svgBox{width:min(70vw,560px);height:min(50vh,400px);display:flex;align-items:center;justify-content:center}
+#svgBox svg{width:100%;height:100%;stroke:#fff;fill:none;stroke-width:1.8;stroke-linecap:round;filter:drop-shadow(0 0 5px rgba(255,255,255,.3))}
+.transport{padding:10px 16px;border-top:1px solid var(--border);background:var(--surface);display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.time{font-size:10px;color:var(--muted)}
+.bar{flex:1;height:4px;background:#1a1a24;border-radius:2px;cursor:pointer;min-width:60px}
+.fill{height:100%;width:0%;background:#888;border-radius:2px}
+video#media{display:none}canvas#rec{position:absolute;left:-9999px}
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:99;align-items:center;justify-content:center;flex-direction:column;gap:12px}
+.overlay.show{display:flex}.card{background:var(--surface);border:1px solid var(--border);padding:24px;border-radius:10px;text-align:center;max-width:320px}
+.hint{font-size:10px;color:var(--muted);line-height:1.45;margin-top:10px}
+</style></head>
+<body>
+<header>
+  <h1>LYRISEE VECTOR</h1>
+  <span class="badge">audio/video in</span>
+  <span class="badge">vivus video out</span>
+  <span class="status" id="status">Drop audio or video</span>
+</header>
+<div class="main">
+  <div class="panel">
+    <div class="drop" id="drop">Drop <b>audio or video</b><br><span style="opacity:.7">or click · video → audio extracted</span>
+      <div id="fname" style="margin-top:6px;color:var(--accent);font-size:10px"></div>
+      <input type="file" id="file" accept="audio/*,video/*" style="display:none">
+    </div>
+    <button class="btn primary" id="btnDemo">Load demo cues</button>
+    <textarea id="lyrics" placeholder="Optional: paste lyrics, one line each — timed across track" style="width:100%;min-height:80px;margin-top:10px;background:#14141e;border:1px solid var(--border);color:var(--text);padding:8px;font:inherit;font-size:11px;border-radius:5px"></textarea>
+    <button class="btn" id="btnLyrics">Apply lyrics → cues</button>
+    <p class="hint"><b>Video:</b> audio track used; Vivus is the picture on export.<br><b>Audio:</b> same; export is the only video.<br><b>Export:</b> WebM of stage + sound.</p>
+  </div>
+  <div class="stage">
+    <div id="lyric">Waiting<span class="sub">drop media</span></div>
+    <div id="stage"><div id="svgBox"></div></div>
+    <video id="media" playsinline crossorigin="anonymous"></video>
+    <canvas id="rec" width="1280" height="720"></canvas>
+    <div class="transport">
+      <button class="btn primary" id="play" disabled style="width:auto">Play</button>
+      <button class="btn" id="pause" disabled style="width:auto">Pause</button>
+      <button class="btn primary" id="exp" disabled style="width:auto">Export video</button>
+      <span class="time" id="time">0:00 / 0:00</span>
+      <div class="bar" id="bar"><div class="fill" id="fill"></div></div>
+    </div>
+  </div>
+  <div class="panel right">
+    <div style="font-size:9px;color:var(--muted);letter-spacing:.1em;margin-bottom:8px">CUES</div>
+    <div id="list"></div>
+    <div class="hint" id="mediaInfo" style="margin-top:12px">No media</div>
+  </div>
+</div>
+<div class="overlay" id="ov"><div class="card"><div id="ovt">Exporting…</div><button class="btn" id="cancel" style="margin-top:12px">Cancel</button></div></div>
+<script>
+const $=id=>document.getElementById(id);
+const DEMO=[
+{t:0,text:'Roots locked in the underground frost',c:'roots',k:['ROOTS','FROST']},
+{t:4,text:'Eyes track the digital sky',c:'eye',k:['EYES','SKY']},
+{t:8,text:'Fractured frequencies collapse into light',c:'prism',k:['LIGHT','FRACTURE']},
+{t:12,text:'Waves of signal fold into silence',c:'wave',k:['WAVE','SILENCE']},
+{t:16,text:'A circuit remembers the pulse',c:'circuit',k:['CIRCUIT','PULSE']},
+{t:21,text:'Mountains rise from static',c:'mountain',k:['MOUNTAIN','STATIC']},
+{t:25,text:'Bird cuts the black horizon',c:'bird',k:['BIRD','HORIZON']},
+{t:29,text:'Moon holds the last frequency',c:'moon',k:['MOON','FREQUENCY']},
+{t:33,text:'Fire in the void',c:'fire',k:['FIRE','VOID']}
+];
+const G={A:['M1 14 L5 1 L9 14','M3 9 H7'],B:['M2 1 V13','M2 1 H6 Q9 1 9 4 Q9 7 6 7 H2','M2 7 H6.5 Q9 7 9 10 Q9 13 6.5 13 H2'],C:['M9 3 Q6.5 1 4 1 Q1 1 1 7 Q1 13 4 13 Q6.5 13 9 11'],D:['M2 1 V13','M2 1 H5.5 Q9 1 9 7 Q9 13 5.5 13 H2'],E:['M8 1 H2 V13 H8','M2 7 H6'],F:['M8 1 H2 V13','M2 7 H6'],G:['M9 3 Q6.5 1 4 1 Q1 1 1 7 Q1 13 4 13 Q7 13 9 11 V8 H6'],H:['M2 1 V13','M8 1 V13','M2 7 H8'],I:['M3 1 H7','M5 1 V13','M3 13 H7'],J:['M6 1 H9 V10 Q9 13 5 13 Q2 13 2 10'],K:['M2 1 V13','M8 1 L2 7 L8 13'],L:['M2 1 V13 H8'],M:['M1 13 V1 L5 8 L9 1 V13'],N:['M2 13 V1 L8 13 V1'],O:['M5 1 Q1 1 1 7 Q1 13 5 13 Q9 13 9 7 Q9 1 5 1'],P:['M2 13 V1 H6 Q9 1 9 4.5 Q9 8 6 8 H2'],Q:['M5 1 Q1 1 1 7 Q1 13 5 13 Q9 13 9 7 Q9 1 5 1','M6 10 L9 14'],R:['M2 13 V1 H6 Q9 1 9 4.5 Q9 8 6 8 H2','M5 8 L9 13'],S:['M8.5 3 Q6.5 1 4 1 Q1.5 1 1.5 4 Q1.5 7 5 7 Q8.5 7 8.5 10.5 Q8.5 13 5 13 Q2.5 13 1.5 11'],T:['M1 1 H9','M5 1 V13'],U:['M2 1 V10 Q2 13 5 13 Q8 13 8 10 V1'],V:['M1 1 L5 13 L9 1'],W:['M0.5 1 L2.5 13 L5 5 L7.5 13 L9.5 1'],X:['M1 1 L9 13','M9 1 L1 13'],Y:['M1 1 L5 7 L9 1','M5 7 V13'],Z:['M1 1 H9 L1 13 H9'],' ':[]};
+function lp(ch,ox,oy,s){const g=G[ch.toUpperCase()];if(!g)return[];return g.map(d=>{let o='',tk=d.match(/[MLHVQ]|-?[\d.]+/g)||[],i=0,cmd='',p=0;while(i<tk.length){const t=tk[i];if(/[MLHVQ]/.test(t)){cmd=t;o+=t;p=0;i++;continue}const n=+t;if(cmd==='H')o+=(ox+n*s).toFixed(1);else if(cmd==='V')o+=(oy+n*s).toFixed(1);else{o+=(p%2===0?ox+n*s:oy+n*s).toFixed(1);p++}o+=' ';i++}return o.trim()})}
+function word(w,x,y,s){const ps=[];let cx=x;for(const ch of w){ps.push(...lp(ch,cx,y,s));cx+=(ch===' '?4:10)*s*1.05}return ps}
+function svg(ds){return `<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">${ds.map(d=>`<path d="${d}"/>`).join('')}</svg>`}
+function calligram(c,k){const w0=(k&&k[0])||'FORM',w1=(k&&k[1])||'',p=[];
+if(c==='roots'){p.push('M20 160 Q100 150 180 160',...word(w0,68,68,1.05),'M100 95 L55 55','M100 110 L40 80','M100 95 L150 50','M100 115 L165 85');if(w1)p.push(...word(w1,28,38,.65))}
+else if(c==='eye'){p.push('M15 100 Q100 30 185 100 Q100 170 15 100 Z','M100 78 A22 22 0 1 1 99.9 78',...word(w0,55,52,.8))}
+else if(c==='prism'){p.push('M100 25 L170 80 L145 170 L55 170 L30 80 Z','M100 25 L100 115','M100 115 L170 80','M100 115 L30 80',...word(w0,62,95,.7))}
+else if(c==='wave'){p.push('M10 80 Q40 30 70 80 T130 80 T190 80','M10 110 Q40 60 70 110 T130 110 T190 110',...word(w0,48,52,.85))}
+else if(c==='circuit'){p.push('M70 70 H130 V130 H70 Z','M100 30 V70','M100 130 V170','M30 100 H70','M130 100 H170',...word(w0,48,95,.5))}
+else if(c==='mountain'){p.push('M15 165 L55 70 L90 120 L130 45 L185 165 Z',...word(w0,32,140,.5))}
+else if(c==='bird'){p.push('M30 105 Q100 40 170 105','M30 105 Q100 85 170 105',...word(w0,70,52,.7))}
+else if(c==='moon'){p.push('M125 35 A65 65 0 1 0 125 165 A48 48 0 1 1 125 35',...word(w0,38,90,.75))}
+else if(c==='fire'){p.push('M100 170 C55 145 50 95 85 60 C70 95 90 105 100 75 C110 105 130 95 115 60 C150 95 145 145 100 170 Z',...word(w0,72,125,.65))}
+else p.push('M100 30 A70 70 0 1 1 99.9 30',...word(w0,70,95,.8));
+return svg(p)}
+function pick(t){const l=(t||'').toLowerCase();const m=[[['root','frost'],'roots'],[['eye','sky'],'eye'],[['light','fracture'],'prism'],[['wave','silence'],'wave'],[['circuit','pulse'],'circuit'],[['mountain','static'],'mountain'],[['bird','horizon'],'bird'],[['moon','frequency'],'moon'],[['fire','void'],'fire']];for(const [ks,c] of m)if(ks.some(k=>l.includes(k)))return c;return 'void'}
+function keys(t){return (t||'').toUpperCase().replace(/[^A-Z\s]/g,'').trim().split(/\s+/).filter(Boolean).slice(0,2)}
+
+const media=$('media');
+let kind=null,url=null,name='',cues=[],idx=-1,vivus=null,playing=false,demo=false,demoOff=0,demoT0=0,raf=null;
+let actx=null,analyser=null,srcNode=null,recDest=null;
+let exporting=false,recorder=null,chunks=[],eraf=null;
+
+function st(m){$('status').textContent=m}
+function fmt(s){if(!isFinite(s)||s<0)return '0:00';return Math.floor(s/60)+':'+String(Math.floor(s%60)).padStart(2,'0')}
+function dur(){if(demo)return cues.length?cues[cues.length-1].t+5:40;return media.duration&&isFinite(media.duration)?media.duration:0}
+function now(){if(demo)return playing?demoOff+(performance.now()-demoT0)/1000:demoOff;return media.currentTime||0}
+
+function graph(){
+  if(!actx)actx=new(window.AudioContext||window.webkitAudioContext);
+  if(actx.state==='suspended')actx.resume();
+  if(!srcNode){
+    try{
+      srcNode=actx.createMediaElementSource(media);
+      analyser=actx.createAnalyser();analyser.fftSize=256;
+      recDest=actx.createMediaStreamDestination();
+      srcNode.connect(analyser);analyser.connect(actx.destination);srcNode.connect(recDest);
+    }catch(e){console.warn(e)}
+  }
+}
+
+function loadFile(f){
+  if(!f)return;
+  demo=false;name=f.name||'media';
+  const isV=(f.type||'').startsWith('video/')||/\.(mp4|webm|mov|mkv)$/i.test(name);
+  const isA=(f.type||'').startsWith('audio/')||/\.(mp3|wav|ogg|m4a|aac)$/i.test(name);
+  if(!isV&&!isA){st('Need audio or video');return}
+  if(url)URL.revokeObjectURL(url);
+  url=URL.createObjectURL(f);kind=isV?'video':'audio';
+  media.pause();media.src=url;media.load();
+  $('fname').textContent=(kind==='video'?'🎬 ':'🎵 ')+name;
+  st('Loading '+kind+'…');
+  media.addEventListener('loadedmetadata',()=>{
+    graph();
+    const d=dur();
+    $('play').disabled=false;$('exp').disabled=false;
+    $('time').textContent='0:00 / '+fmt(d);
+    $('mediaInfo').textContent=kind==='video'
+      ?('VIDEO · audio extracted · '+fmt(d)+' · export replaces picture with Vivus')
+      :('AUDIO · '+fmt(d)+' · export = Vivus lyric video');
+    st(kind==='video'?'Video loaded — audio ready':'Audio loaded');
+    if(!cues.length)seed(d);
+    list();
+  },{once:true});
+  media.addEventListener('error',()=>st('Load failed — try mp3/mp4/webm'),{once:true});
+}
+
+function seed(d){
+  const src=DEMO,maxT=src[src.length-1].t||1;
+  if(!d||d<1)cues=src.map(x=>({...x}));
+  else cues=src.map(x=>({...x,t:Math.round((x.t/maxT)*Math.max(0,d-2)*10)/10}));
+  idx=-1;
+}
+
+$('btnLyrics').onclick=()=>{
+  const lines=$('lyrics').value.split(/\n/).map(s=>s.trim()).filter(Boolean);
+  if(!lines.length){st('Paste lyrics first');return}
+  const d=dur()||Math.max(lines.length*3.5,20),step=d/lines.length;
+  cues=lines.map((text,i)=>{const c=pick(text);return{t:Math.round(i*step*10)/10,text,c,k:keys(text)}});
+  idx=-1;list();st(cues.length+' cues across '+fmt(d));
+};
+
+function list(){
+  const el=$('list');el.innerHTML='';
+  cues.forEach((c,i)=>{
+    const d=document.createElement('div');
+    d.style.cssText='padding:6px 8px;background:#14141e;border-radius:5px;font-size:10px;margin-bottom:3px;cursor:pointer;border:1px solid '+(i===idx?'#555':'transparent');
+    d.innerHTML=`<div style="color:var(--muted)">${fmt(c.t)} · ${c.c}</div><div>${c.text}</div>`;
+    d.onclick=()=>{idx=i;draw(c);list()};
+    el.appendChild(d);
+  });
+}
+
+function draw(cue){
+  if(!cue)return;
+  $('lyric').innerHTML=cue.text+`<span class="sub">${cue.c} · ${kind||'demo'}</span>`;
+  const html=calligram(cue.c,cue.k);
+  const tmp=document.createElement('div');tmp.innerHTML=html;
+  const s=tmp.querySelector('svg');const id='v'+Date.now();s.id=id;
+  s.querySelectorAll('path').forEach(p=>{p.setAttribute('fill','none');p.setAttribute('stroke','#fff');p.setAttribute('stroke-linecap','round')});
+  const box=$('svgBox');const prev=box.querySelector('svg');
+  if(prev)prev.style.opacity='0';
+  setTimeout(()=>{
+    box.innerHTML='';box.appendChild(s);
+    if(vivus)try{vivus.stop()}catch(e){}
+    try{vivus=new Vivus(id,{type:'delayed',duration:120,animTimingFunction:Vivus.EASE_OUT,start:'autostart'})}catch(e){console.warn(e)}
+  },prev?250:0);
+}
+
+function tick(){
+  const t=now(),d=dur();
+  $('time').textContent=fmt(t)+' / '+fmt(d);
+  $('fill').style.width=(d?Math.min(100,t/d*100):0)+'%';
+  if(playing&&cues.length){
+    let n=-1;for(let i=0;i<cues.length;i++)if(t>=cues[i].t)n=i;
+    if(n!==-1&&n!==idx){idx=n;draw(cues[n]);list()}
+  }
+  if(playing){
+    if(demo&&t>=dur()){stop();st('Demo done')}
+    else if(!demo&&media.ended){stop();st('Ended')}
+    else raf=requestAnimationFrame(tick);
+  }
+}
+
+async function play(){
+  if(!cues.length){const d=dur();if(d)seed(d)}
+  if(!cues.length){st('Load demo or media');return}
+  if(demo){
+    playing=true;demoT0=performance.now();
+    if(idx<0){idx=0;draw(cues[0])}
+    $('play').disabled=true;$('pause').disabled=false;st('Playing demo');
+    raf=requestAnimationFrame(tick);return;
+  }
+  if(!media.src){st('Drop media first');return}
+  graph();if(actx.state==='suspended')await actx.resume();
+  try{
+    await media.play();playing=true;
+    $('play').disabled=true;$('pause').disabled=false;st('Playing · '+kind);
+    if(idx<0){idx=0;draw(cues[0])}
+    raf=requestAnimationFrame(tick);
+  }catch(e){st('Play blocked: '+e.message)}
+}
+function pause(){
+  playing=false;if(demo)demoOff=now();else media.pause();
+  if(raf)cancelAnimationFrame(raf);
+  $('play').disabled=false;$('pause').disabled=true;st('Paused');
+}
+function stop(){
+  playing=false;if(raf)cancelAnimationFrame(raf);
+  if(demo){demoOff=0}else{media.pause();try{media.currentTime=0}catch(e){}}
+  idx=-1;$('play').disabled=false;$('pause').disabled=true;
+  $('fill').style.width='0%';$('time').textContent='0:00 / '+fmt(dur());list();
+}
+
+async function exportVideo(){
+  if(demo){st('Drop real media to export');return}
+  if(!media.src){st('Load media first');return}
+  if(!cues.length)seed(dur());
+  const d=dur();if(!d){st('Wait for media duration');return}
+  graph();if(actx.state==='suspended')await actx.resume();
+  exporting=true;chunks=[];$('ov').classList.add('show');$('ovt').textContent='Preparing…';
+  media.pause();media.currentTime=0;idx=-1;draw(cues[0]);
+  await new Promise(r=>setTimeout(r,400));
+  const canvas=$('rec'),ctx=canvas.getContext('2d'),W=1280,H=720;
+  const vs=canvas.captureStream(30);
+  const tracks=[...vs.getVideoTracks()];
+  if(recDest)recDest.stream.getAudioTracks().forEach(t=>tracks.push(t));
+  const mixed=new MediaStream(tracks);
+  let mime='video/webm;codecs=vp9,opus';
+  if(!MediaRecorder.isTypeSupported(mime))mime='video/webm;codecs=vp8,opus';
+  if(!MediaRecorder.isTypeSupported(mime))mime='video/webm';
+  try{recorder=new MediaRecorder(mixed,{mimeType:mime,videoBitsPerSecond:6000000})}
+  catch(e){recorder=new MediaRecorder(mixed)}
+  recorder.ondataavailable=e=>{if(e.data&&e.data.size)chunks.push(e.data)};
+  recorder.onstop=()=>{
+    $('ov').classList.remove('show');exporting=false;if(eraf)cancelAnimationFrame(eraf);
+    if(!chunks.length){st('No export data');return}
+    const blob=new Blob(chunks,{type:'video/webm'});
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);
+    a.download=(name||'lyrisee').replace(/\.[^.]+$/,'').replace(/[^\w.-]+/g,'_')+'_vector.webm';
+    a.click();st('Exported '+a.download);stop();
+  };
+  recorder.start(200);
+  await media.play();playing=true;idx=0;draw(cues[0]);
+  $('play').disabled=true;
+  const frame=()=>{
+    if(!exporting)return;
+    const t=media.currentTime,total=dur();
+    let n=-1;for(let i=0;i<cues.length;i++)if(t>=cues[i].t)n=i;
+    if(n!==-1&&n!==idx){idx=n;draw(cues[n]);list()}
+    ctx.fillStyle='#000';ctx.fillRect(0,0,W,H);
+    ctx.fillStyle='#c8c8d8';ctx.font='600 28px monospace';ctx.textAlign='center';
+    ctx.fillText(((cues[idx]||cues[0]).text||'').toUpperCase(),W/2,48);
+    const svgEl=$('svgBox').querySelector('svg');
+    if(svgEl){
+      const cl=svgEl.cloneNode(true);cl.setAttribute('width','600');cl.setAttribute('height','600');
+      const ser=new XMLSerializer().serializeToString(cl);
+      const u=URL.createObjectURL(new Blob([ser],{type:'image/svg+xml;charset=utf-8'}));
+      const img=new Image();
+      img.onload=()=>{const sz=Math.min(H*0.62,520);ctx.drawImage(img,(W-sz)/2,(H-sz)/2+20,sz,sz);URL.revokeObjectURL(u);
+        ctx.fillStyle='rgba(255,255,255,.25)';ctx.font='14px monospace';ctx.textAlign='right';ctx.fillText('LYRISEE VECTOR',W-28,H-24)};
+      img.src=u;
+    }
+    $('ovt').textContent=`Recording ${fmt(t)} / ${fmt(total)}`;
+    $('time').textContent=fmt(t)+' / '+fmt(total);
+    $('fill').style.width=(total?Math.min(100,t/total*100):0)+'%';
+    if(t>=total-0.05||media.ended){try{recorder.stop()}catch(e){}media.pause();playing=false}
+    else eraf=requestAnimationFrame(frame);
+  };
+  raf=requestAnimationFrame(tick);
+  eraf=requestAnimationFrame(frame);
+}
+
+$('cancel').onclick=()=>{if(recorder&&recorder.state!=='inactive')try{recorder.stop()}catch(e){};exporting=false;$('ov').classList.remove('show');media.pause();playing=false;st('Export cancelled')};
+const drop=$('drop'),file=$('file');
+drop.onclick=()=>file.click();
+drop.ondragover=e=>{e.preventDefault();drop.classList.add('drag')};
+drop.ondragleave=()=>drop.classList.remove('drag');
+drop.ondrop=e=>{e.preventDefault();drop.classList.remove('drag');if(e.dataTransfer.files[0])loadFile(e.dataTransfer.files[0])};
+file.onchange=e=>{if(e.target.files[0])loadFile(e.target.files[0])};
+$('btnDemo').onclick=()=>{demo=true;media.pause();cues=DEMO.map(x=>({...x}));idx=-1;demoOff=0;list();
+  $('play').disabled=false;$('exp').disabled=true;$('fname').textContent='';
+  $('mediaInfo').textContent='Demo (no media) — export needs a file';
+  st('Demo loaded — drop media to export');$('lyric').innerHTML='Demo ready<span class="sub">drop media to export video</span>'};
+$('play').onclick=()=>play();$('pause').onclick=()=>pause();$('exp').onclick=()=>exportVideo();
+$('bar').onclick=e=>{const d=dur();if(!d)return;const r=e.currentTarget.getBoundingClientRect();
+  const ratio=Math.max(0,Math.min(1,(e.clientX-r.left)/r.width));const t=ratio*d;
+  if(demo){demoOff=t;if(playing)demoT0=performance.now()}else if(media.src)media.currentTime=t;
+  let n=-1;for(let i=0;i<cues.length;i++)if(t>=cues[i].t)n=i;
+  if(n>=0){idx=n;draw(cues[n]);list()}
+  $('fill').style.width=(ratio*100)+'%';$('time').textContent=fmt(t)+' / '+fmt(d)};
+document.addEventListener('keydown',e=>{if(e.target.tagName==='TEXTAREA'||e.target.tagName==='INPUT')return;
+  if(e.code==='Space'){e.preventDefault();playing?pause():play()}});
+st('Drop audio or video — export Vivus lyric video');
+</script>
+</body>
+</html>

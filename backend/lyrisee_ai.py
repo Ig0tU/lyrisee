@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""lyrisee_ai.py — Director. Ollama = Cloud only (https://ollama.com). Local = LM Studio."""
+"""lyrisee_ai.py — Director. Custom stroke clipart + type-as-form."""
 from __future__ import annotations
 import json, os, re, sys
 from typing import Any
@@ -23,65 +23,47 @@ LAYOUTS = ["row", "split", "ascend", "fall", "stack", "spiral", "path", "cage", 
 MOTIFS = ["ring", "heart", "staff", "card", "moon", "boot", "car", "figure",
           "bars", "ladder", "coin", "ring_split"]
 
-CONCEPT_SYS = """You are Lyrisee's visual Director. Build ONE song-specific world. Do not recycle a previous song's palette or motifs.
+CONCEPT_SYS = """You are Lyrisee's visual Director. Build ONE song-specific world.
 
-Reasoning order (required — skip any step and the direction stage collapses):
-1) SURFACE — what the lyrics literally say
-2) UNDERCURRENT — double meanings, power, irony, desire, self-sabotage
-3) THE UNSAID — the question / confession / invitation the song circles but never answers
-4) Only then: palette, fonts, motion, restraint, motif map
+Reasoning order:
+1) SURFACE 2) UNDERCURRENT 3) THE UNSAID (concrete sentence) 4) then palette/motion/motifs
 
-HOUSE STYLE: type IS the object. Stroke line-art only. No emoji, no Unicode icons.
-motifs maps THIS song's imagery → engine shapes, e.g. {"wheel":"ring","vow":"heart","climb":"ladder"}.
-Allowed motif values ONLY: """ + ", ".join(MOTIFS) + """
-
-HARD RULES:
-- dual_readings.unsaid must be a concrete sentence (not "ambiguity" or "tension").
-- accents: 1–2 hex colors that fit THIS song, not default red.
-- restraint 0.55–0.9 (higher = fewer motifs, more negative space).
-- Intimate/confessional → gap_strategy "negative_space" or "withhold_motif".
-- Confrontational → "clash_layout" or "hard_hits".
+HOUSE STYLE: type can BE the object; OR the stage may show simple stroke CLIPART of the intention.
+No emoji. Custom per-line drawings are first-class (paths), stock motifs are shortcuts only.
+Allowed stock motif values: """ + ", ".join(MOTIFS) + """
 
 Output ONLY JSON:
 {"palette":{"bg":"#000000","ink":"#EDEAE4","accents":["#C41E3A"]},
  "fonts":{"display":"Anton","accent":"Archivo Black"},
  "motifs":{"<image word>":"<engine motif>"},
- "motion":"<one sentence motion grammar>",
- "restraint":0.72,
- "mood":"<3-6 word mood>",
+ "motion":"...","restraint":0.72,"mood":"...",
  "construct_bias":["embodiment"],
  "dual_readings":{"surface":"...","undercurrent":"...","unsaid":"..."},
- "visual_priority":"emphasize_unsaid",
- "gap_strategy":"negative_space"}"""
+ "visual_priority":"emphasize_unsaid","gap_strategy":"negative_space"}"""
 
-DIRECTION_SYS = """You are the line-level Art Director. You stage TYPE as meaning. You do not illustrate nouns.
+DIRECTION_SYS = """You are Lyrisee's line Art Director. Insanely high adhesion to intention:
+visualize nuance and undercurrent, not dictionary nouns.
 
-Closed vocabularies only:
-layout ∈ """ + ", ".join(LAYOUTS) + """
-  row=neutral (use sparingly) · split=opposition · ascend=rising · fall=collapse
-  stack=accumulation · spiral=obsession · path=journey · cage=trapped · cagebars=prison bars as words
-motif ∈ """ + ", ".join(MOTIFS) + """  (omit if the line earns no object)
+Three tools per line (combine when it serves meaning):
+1) layout — words as form: """ + ", ".join(LAYOUTS) + """
+2) motif — optional stock clipart shortcut: """ + ", ".join(MOTIFS) + """
+3) paths — CUSTOM stroke clipart: array of SVG path `d` strings, viewBox 0 0 200 200.
+   Simple line-art, 1–6 paths, no fill. Invent when stock motifs cannot carry the INTENTION.
+   Draw the unsaid/undercurrent. Example: unspoken goodbye → door gap + incomplete circle.
 
-For EACH line return one object:
-{"line_index":0,"layout":"cage","motif":"bars","on":"<verbatim word that earns the motif>",
- "hit":"<ONE charged word>",
- "emphasis":["..."],"script":["..."],"glow":["..."],
- "rotate":{},
- "surface":"<≤12 words>","undercurrent":"<≤12 words>","gap":"<the unsaid for THIS line>"}
+Per line:
+{"line_index":0,"layout":"split","motif":null,
+ "paths":["M40 100 H160","M160 100 L140 80","M160 100 L140 120"],
+ "on":"<word>","hit":"<ONE charged word>",
+ "emphasis":[],"script":[],"glow":[],"rotate":{},
+ "surface":"≤12 words","undercurrent":"≤12 words","gap":"<unsaid>"}
 
-QUALITY RULES (breaking these = bad direction):
-1. Direct the UNDERCURRENT / UNSAID from the concept, not the surface nouns.
-2. At most one "hit" per line; every named word must appear VERBATIM in that line.
-3. motif only when the line has a real earned image — prefer omit over decoration.
-4. Do NOT default to layout "row". Across a batch, vary layouts; never three identical layouts in a row.
-5. Do NOT spam the same motif (heart/moon/ring) across consecutive lines.
-6. Quiet / intimate lines → more script + omit motif. Confrontational → hit + harder layout.
-7. If concept.visual_priority is emphasize_unsaid, put the real charge in "gap", not in motif.
-
-BAD (never do this): every line {"layout":"row","motif":"heart","hit":"love"}
-GOOD: a verse that moves row → split → cage → fall as the emotional stakes change.
-
-Output ONLY a JSON array (or {"directions":[...]}). No prose."""
+RULES:
+- Prefer custom paths over stock motif when the idea is specific.
+- Omit drawing when silence is stronger.
+- Vary layouts; no heart/moon/ring spam; no three identical layouts in a row.
+- Every named word must appear verbatim in the line.
+Output ONLY a JSON array (or {"directions":[...]})."""
 
 REPAIR_SYS = """Repair Whisper transcription lightly. Keep timings. Return JSON {\"words\":[{\"text\":\"...\",\"start\":0,\"end\":0}]}."""
 
@@ -108,12 +90,11 @@ def _call_openai(system, user, temperature):
     key = os.environ.get("OPENAI_API_KEY") or "lm-studio"
     model = os.environ.get("OPENAI_MODEL", "gpt-4o-mini")
     base = (os.environ.get("OPENAI_BASE_URL") or "https://api.openai.com/v1").rstrip("/")
-    url = f"{base}/chat/completions"
     body = {"model": model, "temperature": temperature,
             "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}]}
     if "openai.com" in base:
         body["response_format"] = {"type": "json_object"}
-    req = urllib.request.Request(url, data=json.dumps(body).encode(),
+    req = urllib.request.Request(f"{base}/chat/completions", data=json.dumps(body).encode(),
         headers={"Content-Type": "application/json", "Authorization": f"Bearer {key}"}, method="POST")
     with urllib.request.urlopen(req, timeout=120) as r:
         return json.loads(r.read())["choices"][0]["message"]["content"]
@@ -128,8 +109,7 @@ def _call_anthropic(system, user, temperature):
     with urllib.request.urlopen(req, timeout=120) as r:
         return json.loads(r.read())["content"][0]["text"]
 
-OLLAMA_FALLBACKS = ["gpt-oss:20b", "gpt-oss:120b", "qwen3-coder:480b-cloud",
-                    "deepseek-v3.1:671b", "kimi-k2:1t-cloud"]
+OLLAMA_FALLBACKS = ["gpt-oss:20b", "gpt-oss:120b", "qwen3-coder:480b-cloud", "deepseek-v3.1:671b", "kimi-k2:1t-cloud"]
 _OLLAMA_MODEL_OK = None
 
 def _ollama_base():
@@ -137,42 +117,32 @@ def _ollama_base():
 
 def _ollama_once(model, key, system, user, temperature, timeout=180):
     import urllib.request
-    url = f"{_ollama_base()}/api/chat"
     body = {"model": model, "messages": [{"role": "system", "content": system},
-            {"role": "user", "content": user}], "stream": False,
-            "options": {"temperature": temperature}}
-    req = urllib.request.Request(url, data=json.dumps(body).encode(),
+            {"role": "user", "content": user}], "stream": False, "options": {"temperature": temperature}}
+    req = urllib.request.Request(f"{_ollama_base()}/api/chat", data=json.dumps(body).encode(),
         headers={"Content-Type": "application/json", "Authorization": f"Bearer {key}"}, method="POST")
     with urllib.request.urlopen(req, timeout=timeout) as r:
-        data = json.loads(r.read())
-        return data["message"]["content"]
+        return json.loads(r.read())["message"]["content"]
 
 def _call_ollama(system, user, temperature):
     global _OLLAMA_MODEL_OK
     key = (os.environ.get("OLLAMA_API_KEY") or "").strip()
     if not key:
-        raise RuntimeError("Ollama Cloud requires OLLAMA_API_KEY from https://ollama.com/settings/keys")
+        raise RuntimeError("Ollama Cloud requires OLLAMA_API_KEY")
     configured = os.environ.get("OLLAMA_MODEL", "gpt-oss:120b")
-    order = [_OLLAMA_MODEL_OK] if _OLLAMA_MODEL_OK else [configured] + [
-        m for m in OLLAMA_FALLBACKS if m != configured]
+    order = [_OLLAMA_MODEL_OK] if _OLLAMA_MODEL_OK else [configured] + [m for m in OLLAMA_FALLBACKS if m != configured]
     last = None
     for model in order:
         try:
             out = _ollama_once(model, key, system, user, temperature)
-            if model != _OLLAMA_MODEL_OK:
-                if model != configured:
-                    print(f"[ai] '{configured}' unavailable on this key — using '{model}' instead")
-                _OLLAMA_MODEL_OK = model
+            _OLLAMA_MODEL_OK = model
             return out
-        except RuntimeError as e:
-            last = e
-            if not re.match(r"HTTP (402|403|404)", str(e)):
-                raise
-            print(f"[ai] ollama model '{model}' unavailable ({str(e)[:80]}); trying next")
         except Exception as e:
             last = e
-            print(f"[ai] ollama model '{model}' failed ({str(e)[:80]}); trying next")
-    raise RuntimeError(f"Ollama Cloud: no available model for this key. Last error — {last}")
+            if not re.match(r"HTTP (402|403|404)", str(e)):
+                print(f"[ai] ollama '{model}' failed ({str(e)[:80]})")
+            continue
+    raise RuntimeError(f"Ollama Cloud: no model. Last — {last}")
 
 def _parse_json(text: str) -> Any:
     text = text.strip()
@@ -221,13 +191,29 @@ def _apply_direction(words, line, d, metaphors, scenes):
     if layout not in LAYOUTS:
         layout = None
     motif = d.get("motif") if d.get("motif") in MOTIFS else None
+    paths = d.get("paths") or d.get("svg_paths") or []
+    if isinstance(paths, str):
+        paths = [paths]
+    if not isinstance(paths, list):
+        paths = []
+    safe = []
+    for pr in paths:
+        if not isinstance(pr, str):
+            continue
+        pr = pr.strip()
+        if pr and re.match(r"^[MmLlHhVvCcSsQqTtAaZz0-9.,\s\-eE]+$", pr):
+            safe.append(pr)
+        if len(safe) >= 8:
+            break
+    paths = safe
     if layout:
         metaphors.append({"start": start, "metaphor": layout, "line": line["text"],
                           "gap": d.get("gap"), "undercurrent": d.get("undercurrent")})
     rotate = {k: v for k, v in (d.get("rotate") or {}).items()
               if isinstance(v, (int, float))} if isinstance(d.get("rotate"), dict) else {}
-    if motif or rotate:
+    if motif or rotate or paths:
         scenes.append({"start": start, "metaphor": layout or "row", "motif": motif,
+                       "paths": paths or None,
                        "on": d.get("on") or "", "rotate": rotate, "breakAt": 0.7,
                        "figure": "figure" if layout in ("cage", "cagebars") else None})
     def names(key):
@@ -241,12 +227,9 @@ def _apply_direction(words, line, d, metaphors, scenes):
         if not n:
             continue
         dirn = w.get("dir") or {}
-        if n in emph:
-            dirn["emphasis"] = 3
-        if n in script:
-            dirn["register"] = "script"
-        if n in glow:
-            dirn["glow"] = True
+        if n in emph: dirn["emphasis"] = 3
+        if n in script: dirn["register"] = "script"
+        if n in glow: dirn["glow"] = True
         if hit and n == hit:
             dirn["hit"] = True
             dirn.setdefault("emphasis", 3)
@@ -258,9 +241,7 @@ def _concept_is_weak(c):
         return True
     dr = c.get("dual_readings") or {}
     unsaid = (dr.get("unsaid") or "").strip().lower()
-    weak_unsaid = (not unsaid) or unsaid in {
-        "tension", "ambiguity", "uncertainty", "the unsaid", "n/a", "none", "..."
-    }
+    weak_unsaid = (not unsaid) or unsaid in {"tension", "ambiguity", "uncertainty", "the unsaid", "n/a", "none", "..."}
     motifs = c.get("motifs") or {}
     mood = (c.get("mood") or "").strip().lower()
     weak_mood = (not mood) or mood in {"emotional", "dramatic", "intense", "sad", "happy"}
@@ -270,20 +251,12 @@ def concept(lyrics, extra=""):
     user = f"Full lyrics:\n\n{lyrics}\n\n"
     if extra:
         user += f"Context:\n{extra}\n\n"
-    user += (
-        "Produce the concept JSON now. "
-        "dual_readings.unsaid MUST be a concrete sentence about what the song refuses to say."
-    )
+    user += "Produce concept JSON. dual_readings.unsaid MUST be a concrete sentence."
     obj = _parse_json(_call_llm(CONCEPT_SYS, user, 0.55))
     if _concept_is_weak(obj):
-        print("[ai] concept weak — retrying with sharper unsaid requirement")
-        retry = user + (
-            "\n\nYour previous answer was too generic. "
-            "Name the specific confession or question the singer will not speak. "
-            "Fill motifs with at least 2 mappings from THIS lyric's imagery."
-        )
+        print("[ai] concept weak — retry")
         try:
-            obj2 = _parse_json(_call_llm(CONCEPT_SYS, retry, 0.6))
+            obj2 = _parse_json(_call_llm(CONCEPT_SYS, user + "\n\nPrevious was generic. Name the specific unsaid. 2+ motif mappings.", 0.6))
             if not _concept_is_weak(obj2):
                 obj = obj2
         except Exception as e:
@@ -295,9 +268,9 @@ def _directions_are_weak(dirs):
         return True
     layouts = [d.get("layout") or "row" for d in dirs]
     motifs = [d.get("motif") for d in dirs if d.get("motif")]
+    has_custom = sum(1 for d in dirs if d.get("paths"))
     row_ratio = sum(1 for x in layouts if x == "row") / max(len(layouts), 1)
-    streak = 1
-    bad_streak = False
+    streak, bad_streak = 1, False
     for i in range(1, len(layouts)):
         if layouts[i] == layouts[i - 1]:
             streak += 1
@@ -313,48 +286,31 @@ def _directions_are_weak(dirs):
         motif_dom = top >= max(3, len(dirs) * 0.5)
     gaps = sum(1 for d in dirs if (d.get("gap") or d.get("undercurrent") or "").strip())
     gap_ratio = gaps / max(len(dirs), 1)
-    return row_ratio > 0.55 or bad_streak or motif_dom or gap_ratio < 0.3
+    return (row_ratio > 0.55 and has_custom < len(dirs) * 0.25) or bad_streak or motif_dom or gap_ratio < 0.3
 
 def direct(lines, concept_obj):
     payload = [{"index": i, "text": ln["text"]} for i, ln in enumerate(lines)]
-    slim = {
-        "mood": concept_obj.get("mood"),
-        "restraint": concept_obj.get("restraint"),
-        "visual_priority": concept_obj.get("visual_priority"),
-        "gap_strategy": concept_obj.get("gap_strategy"),
-        "dual_readings": concept_obj.get("dual_readings"),
-        "motifs": concept_obj.get("motifs"),
-        "motion": concept_obj.get("motion"),
-    }
-    user = (
-        "CONCEPT (obey dual_readings.unsaid and gap_strategy):\n"
-        + json.dumps(slim, ensure_ascii=False)
-        + "\n\nLINES:\n"
-        + json.dumps(payload, ensure_ascii=False)
-        + "\n\nReturn a direction object per line. Vary layouts. Prefer omit motif over decoration."
-    )
-    result = _parse_json(_call_llm(DIRECTION_SYS, user, 0.4))
+    slim = {k: concept_obj.get(k) for k in
+            ("mood", "restraint", "visual_priority", "gap_strategy", "dual_readings", "motifs", "motion")}
+    user = ("CONCEPT:\n" + json.dumps(slim, ensure_ascii=False) +
+            "\n\nLINES:\n" + json.dumps(payload, ensure_ascii=False) +
+            "\n\nPrefer custom paths for specific intention. Vary layouts.")
+    result = _parse_json(_call_llm(DIRECTION_SYS, user, 0.45))
     if isinstance(result, dict) and "directions" in result:
         result = result["directions"]
     if not isinstance(result, list):
         raise ValueError("Direction response was not a list")
     if _directions_are_weak(result):
-        print("[ai] directions weak (row spam / motif spam / no gaps) — one retry")
-        critique = (
-            user
-            + "\n\nCRITIQUE of a bad pass: too many layout=row, repeated motifs, missing gap/undercurrent. "
-            "Redo the array. Change layout when stakes change. Put the charge in gap + hit, not motif spam."
-        )
+        print("[ai] directions weak — retry")
         try:
-            result2 = _parse_json(_call_llm(DIRECTION_SYS, critique, 0.5))
+            result2 = _parse_json(_call_llm(DIRECTION_SYS, user +
+                "\n\nCRITIQUE: too generic. Add custom paths for intention; vary layouts; fill gap.", 0.55))
             if isinstance(result2, dict) and "directions" in result2:
                 result2 = result2["directions"]
             if isinstance(result2, list) and not _directions_are_weak(result2):
                 result = result2
             elif isinstance(result2, list):
-                result = result2 if len(set(d.get("layout") for d in result2)) > len(
-                    set(d.get("layout") for d in result)
-                ) else result
+                result = result2
         except Exception as e:
             print(f"[ai] direction retry failed ({e})")
     return result
@@ -362,8 +318,7 @@ def direct(lines, concept_obj):
 def repair_words(words):
     try:
         payload = [{"text": w["text"], "start": w["start"], "end": w["end"]} for w in words]
-        raw = _call_llm(REPAIR_SYS, "Transcribed words:\n" + json.dumps(payload), 0.1)
-        data = _parse_json(raw)
+        data = _parse_json(_call_llm(REPAIR_SYS, "Transcribed words:\n" + json.dumps(payload), 0.1))
         repaired = data.get("words", data) if isinstance(data, dict) else data
         if not isinstance(repaired, list) or len(repaired) < len(words) * 0.7:
             return words
@@ -380,13 +335,13 @@ def repair_words(words):
 def enrich(words):
     if not have_llm():
         return {"words": words}
-    print(f"[ai] provider={_provider()} — CONCEPT + DIRECTION (Ollama=Cloud)")
+    print(f"[ai] provider={_provider()} — CONCEPT + DIRECTION")
     words = repair_words(words)
     lyrics = _words_to_lyrics(words)
     lines = _build_lines_simple(words)
     try:
         concept_obj = concept(lyrics)
-        print(f"[ai] concept ready — mood={concept_obj.get('mood')} | priority={concept_obj.get('visual_priority')}")
+        print(f"[ai] concept mood={concept_obj.get('mood')} priority={concept_obj.get('visual_priority')}")
     except Exception as e:
         print(f"[ai] concept failed ({e})")
         concept_obj = None
@@ -403,8 +358,7 @@ def enrich(words):
                     d["line_index"] = li
                     directions.append(d)
                     _apply_direction(words, lines[li], d, metaphors, scenes)
-            print(f"[ai] directed {len(directions)} lines -> "
-                  f"{len(metaphors)} layout cues, {len(scenes)} drawn scenes")
+            print(f"[ai] directed {len(directions)} lines -> {len(metaphors)} layouts, {len(scenes)} scenes")
         except Exception as e:
             print(f"[ai] direction failed ({e})")
     return {"words": words, "concept": _clean_concept(concept_obj), "metaphors": metaphors,

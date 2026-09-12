@@ -144,7 +144,6 @@ function convert(svgText){
   if(!svg)throw new Error('No SVG');
   if(!svg.getAttribute('id'))svg.setAttribute('id','vivus-svg');
   svg.removeAttribute('fill');svg.removeAttribute('stroke');
-  // shapes → paths
   [...svg.querySelectorAll('circle,ellipse,rect,line,polyline,polygon')].forEach(el=>{
     const d=shapeToPath(el);if(!d)return;
     const p=doc.createElementNS('http://www.w3.org/2000/svg','path');
@@ -159,13 +158,7 @@ function convert(svgText){
     el.setAttribute('stroke-width',width);
     el.setAttribute('stroke-linecap',cap);
     el.setAttribute('stroke-linejoin','round');
-    const st=el.getAttribute('style');
-    if(st){
-      let c=st.replace(/fill\s*:[^;]+;?/gi,'fill:none;').replace(/stroke\s*:[^;]+;?/gi,`stroke:${color};`);
-      el.setAttribute('style',c);
-    }
   });
-  // strip heavy defs
   svg.querySelectorAll('defs').forEach(d=>{
     d.querySelectorAll('linearGradient,radialGradient,pattern,filter').forEach(x=>x.remove());
     if(!d.children.length)d.remove();
@@ -186,7 +179,6 @@ $('convertBtn').onclick=()=>{
     $('downloadBtn').disabled=false;
     $('codeEmpty').style.display='none';$('codeWrap').style.display='block';
     $('outCode').textContent=svg;
-    // Vivus live
     $('liveEmpty').style.display='none';$('liveWrap').style.display='flex';
     const tmp=document.createElement('div');tmp.innerHTML=svg;
     const el=tmp.querySelector('svg');

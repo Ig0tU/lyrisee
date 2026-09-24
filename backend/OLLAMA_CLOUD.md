@@ -7,7 +7,7 @@ Local LLMs go through **LM Studio** (OpenAI-compatible).
 
 ```bash
 export OLLAMA_API_KEY=your_key_from_https://ollama.com/settings/keys
-export OLLAMA_MODEL=deepseek-v3          # or gpt-oss:120b, minimax-m2.7, ...
+export OLLAMA_MODEL=deepseek-v3          # or llama3.3, qwen2.5, deepseek-r1, mistral, gemma2, ...
 export LYRISEE_LLM=ollama
 # Do NOT set OLLAMA_HOST to localhost — it is forced to https://ollama.com
 ```

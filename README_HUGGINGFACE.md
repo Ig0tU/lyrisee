@@ -24,7 +24,7 @@ You can deploy this Space and configure the frontend (`index.html`) to point its
 
 To enable the "Director" AI capabilities, you must configure **Secrets** in your HuggingFace Space settings:
 
-- `OLLAMA_API_KEY`: API key for Ollama Cloud (defaulted model `deepseek-v4-flash`).
+- `OLLAMA_API_KEY`: API key for Ollama Cloud (defaulted model `deepseek-v3`).
 - OR `GEMINI_API_KEY`: API key for Google Gemini.
 - OR `OPENAI_API_KEY`: API key for OpenAI.
 - OR `ANTHROPIC_API_KEY`: API key for Anthropic Claude.

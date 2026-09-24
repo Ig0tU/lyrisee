@@ -109,7 +109,7 @@ def _call_anthropic(system, user, temperature):
     with urllib.request.urlopen(req, timeout=120) as r:
         return json.loads(r.read())["content"][0]["text"]
 
-OLLAMA_FALLBACKS = ["gpt-oss:20b", "gpt-oss:120b", "qwen3-coder:480b-cloud", "deepseek-v3.1:671b", "kimi-k2:1t-cloud"]
+OLLAMA_FALLBACKS = ["deepseek-v3", "llama3.3", "qwen2.5", "deepseek-r1", "mistral", "gemma2"]
 _OLLAMA_MODEL_OK = None
 
 def _ollama_base():
@@ -129,7 +129,7 @@ def _call_ollama(system, user, temperature):
     key = (os.environ.get("OLLAMA_API_KEY") or "").strip()
     if not key:
         raise RuntimeError("Ollama Cloud requires OLLAMA_API_KEY")
-    configured = os.environ.get("OLLAMA_MODEL", "gpt-oss:120b")
+    configured = os.environ.get("OLLAMA_MODEL", "deepseek-v3")
     order = [_OLLAMA_MODEL_OK] if _OLLAMA_MODEL_OK else [configured] + [m for m in OLLAMA_FALLBACKS if m != configured]
     last = None
     for model in order:
